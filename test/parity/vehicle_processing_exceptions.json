@@ -1,0 +1,486 @@
+{
+  "sourceCommit": "0fa2f85d26047f1f22ef6fae17cf93d000ca66e3",
+  "files": {
+    "lib/app/app_providers.dart": {
+      "sourceSha256": "dd0f5ab25ed5553a7582ce1c76d6adf95f49b7e0362453f192f8c129a48c7d7a",
+      "localPath": "lib/app/app_providers.dart",
+      "localSha256": "9bfe321d49fff7d56cc83b16fb50bddeaf9864308086308cf1d04a9bf8698cf2",
+      "reason": "Inject an independent local document repository alongside the existing app-local providers.",
+      "tests": [
+        "test/features/meters/vehicle_entry_screen_test.dart",
+        "test/core/files/document_scanner_test.dart"
+      ]
+    },
+    "lib/app/app.dart": {
+      "sourceSha256": "6747a668aa2db604763184044b3171893e2d5479323174e35b74ce363ef2ea71",
+      "localPath": "lib/app/app.dart",
+      "localSha256": "490bb9cefc8b894d060cad1950d84a2573f480da9edf9934828a9838bc8091d0",
+      "reason": "Vehicle app title, steel-blue/anthracite styling, category icons and wording. Existing navigation and control behavior are retained.",
+      "tests": [
+        "test/widget_test.dart",
+        "test/app/app_theme_test.dart",
+        "test/features/meters/meter_visuals_test.dart"
+      ]
+    },
+    "lib/app/app_theme.dart": {
+      "sourceSha256": "d059161e164dbf080ad468103754d2e15a7b7422a41c7c6ded946b4224c66c77",
+      "localPath": "lib/app/app_theme.dart",
+      "localSha256": "7de8a7827b54e77b72963a7f26d01283e6e06abd31e2b1fde0a24402a87992ec",
+      "reason": "Vehicle app title, steel-blue/anthracite styling, category icons and wording. Existing navigation and control behavior are retained.",
+      "tests": [
+        "test/widget_test.dart",
+        "test/app/app_theme_test.dart",
+        "test/features/meters/meter_visuals_test.dart"
+      ]
+    },
+    "lib/app/widgets/pdf_export_progress_dialog.dart": {
+      "sourceSha256": "285b95d1e141e0dba0b3aa7ba4a7ebd80e7addc41cc94db1c4af03ee2d58c68e",
+      "localPath": "lib/app/widgets/pdf_export_progress_dialog.dart",
+      "localSha256": "e897daf3d698be2355857593ddbd67c537e56b9d5d198787ec595218abd2de83",
+      "reason": "Vehicle report labels, additional metadata and attachment-aware export choices. Full PDF exports append original PDF pages after each entry with separators and validate completeness. Compact exports list filenames. Existing photo layout is retained.",
+      "tests": [
+        "test/features/evidence/vehicle_pdf_attachments_test.dart",
+        "test/features/evidence/evidence_report_service_test.dart",
+        "test/features/meters/capture_reading_screen_test.dart"
+      ]
+    },
+    "lib/core/reminders/local_notification_reminder_repository.dart": {
+      "sourceSha256": "f52419dba06850c3fad01ab6d758ee5635df30bd78132184c2536b09bf9825c2",
+      "localPath": "lib/core/reminders/local_notification_reminder_repository.dart",
+      "localSha256": "b72bca6381294ef3132e59a6f590d6f350404d20be40e4d05af7b297e4066ff7",
+      "reason": "Vehicle-specific native channel identity and reminder copy. Existing reminder processing is retained.",
+      "tests": [
+        "test/core/reminders/reminder_delivery_test.dart",
+        "test/features/meters/strick_reminder_parity_test.dart"
+      ]
+    },
+    "lib/core/persistence/app_database.g.dart": {
+      "sourceSha256": "0609193309d43a53230bebd442fd12fa685ca9e39c19fc2a6fb98823611b59c3",
+      "localPath": "lib/core/persistence/app_database.g.dart",
+      "localSha256": "be3b524181f5f4b438f4be099fd48cc5e3d65d8aea49b354dcd0cf106a659a77",
+      "reason": "Schema 8 persists VIN, registration, workshop, integer-cent costs and ordered current/historical PDFs with revision changes. Migrations preserve existing manifests. Native search includes the workshop.",
+      "tests": [
+        "test/core/persistence/vehicle_migration_test.dart",
+        "test/features/meters/vehicle_documents_test.dart",
+        "test/features/meters/custom_activity_test.dart"
+      ]
+    },
+    "lib/core/persistence/app_database.dart": {
+      "sourceSha256": "b17af2fdb38eeae5e59d7c16e1c4661e7d4e1491b35466f5fc6fe3b8e0b3581d",
+      "localPath": "lib/core/persistence/app_database.dart",
+      "localSha256": "aebd51c8f959b633fdb60325d2dba9bcd66b1010f167aa95cb5c617f953b5f1c",
+      "reason": "Schema 8 persists VIN, registration, workshop, integer-cent costs and ordered current/historical PDFs with revision changes. Migrations preserve existing manifests. Native search includes the workshop.",
+      "tests": [
+        "test/core/persistence/vehicle_migration_test.dart",
+        "test/features/meters/vehicle_documents_test.dart",
+        "test/features/meters/custom_activity_test.dart"
+      ]
+    },
+    "lib/core/integrity/integrity_service.dart": {
+      "sourceSha256": "5cc3c02dd5dd93bb021b916e6eb6c3d83515f3ae2a323417f447c3a83f6c1eaf",
+      "localPath": "lib/core/integrity/integrity_service.dart",
+      "localSha256": "aa27e4b5d7e3095df464ae4910e0204339e0858d2042bb06fcea4785ab79c71f",
+      "reason": "Include PDF identity, order and metadata in manifests while excluding relocatable current/historical PDF paths, matching existing photo handling.",
+      "tests": [
+        "test/features/meters/vehicle_documents_test.dart"
+      ]
+    },
+    "lib/core/integrity/integrity_copy.dart": {
+      "sourceSha256": "1c0b1859b75d6522fe4758db9057afe191388c0c85cf44dfda63fb982f8775e2",
+      "localPath": "lib/core/integrity/integrity_copy.dart",
+      "localSha256": "1bb1b17e7143f331111e72515606609504b95237bf2ae7c37a9a20d92058ceda",
+      "reason": "Vehicle report labels, additional metadata and attachment-aware export choices. Full PDF exports append original PDF pages after each entry with separators and validate completeness. Compact exports list filenames. Existing photo layout is retained.",
+      "tests": [
+        "test/features/evidence/vehicle_pdf_attachments_test.dart",
+        "test/features/evidence/evidence_report_service_test.dart",
+        "test/features/meters/capture_reading_screen_test.dart"
+      ]
+    },
+    "lib/core/files/photo_draft_store.dart": {
+      "sourceSha256": "4aba43983c7bd7903fb3ec556a29c36ffa53e268e7482eb0b68c7d7d203e44dd",
+      "localPath": "lib/core/files/photo_draft_store.dart",
+      "localSha256": "5f01a117f35b4c7b2644f5ac1018c22247435777054731723deae87178dfe652",
+      "reason": "Extend the existing photo draft lifecycle to PDF attachments, external scanner interruptions and all vehicle form fields. Preserve saved references and clean only owned files with concurrent cleanup protection.",
+      "tests": [
+        "test/features/meters/document_draft_test.dart",
+        "test/features/meters/vehicle_entry_screen_test.dart",
+        "test/features/meters/multiple_photo_workflow_test.dart"
+      ]
+    },
+    "lib/features/evidence/domain/evidence_export.dart": {
+      "sourceSha256": "1545531a731f0ba6234c3144c51d04ae25ec673fd9590e954298511400454c37",
+      "localPath": "lib/features/evidence/domain/evidence_export.dart",
+      "localSha256": "0cd2ba4ec8c191feb22cab7103836c82a040bacecfed620795e9b5db3fb9928f",
+      "reason": "Vehicle report labels, additional metadata and attachment-aware export choices. Full PDF exports append original PDF pages after each entry with separators and validate completeness. Compact exports list filenames. Existing photo layout is retained.",
+      "tests": [
+        "test/features/evidence/vehicle_pdf_attachments_test.dart",
+        "test/features/evidence/evidence_report_service_test.dart",
+        "test/features/meters/capture_reading_screen_test.dart"
+      ]
+    },
+    "lib/features/evidence/application/evidence_report_service.dart": {
+      "sourceSha256": "712e1d5c6dacfc6b9f7e0e6ee7c5ec3907e23e0444d5129c07d7daf9d0070c69",
+      "localPath": "lib/features/evidence/application/evidence_report_service.dart",
+      "localSha256": "c657598700cbf0e727c64e5806c8ce8eff5d6fea78afd3ca09c98519c09dc7b7",
+      "reason": "Vehicle report labels, additional metadata and attachment-aware export choices. Full PDF exports append original PDF pages after each entry with separators and validate completeness. Compact exports list filenames. Existing photo layout is retained.",
+      "tests": [
+        "test/features/evidence/vehicle_pdf_attachments_test.dart",
+        "test/features/evidence/evidence_report_service_test.dart",
+        "test/features/meters/capture_reading_screen_test.dart"
+      ]
+    },
+    "lib/features/evidence/presentation/evidence_export_card.dart": {
+      "sourceSha256": "cb5c3597b4c570928524b11e0eb61805667bc8e90df619350046272e452b7bd9",
+      "localPath": "lib/features/evidence/presentation/evidence_export_card.dart",
+      "localSha256": "9c6392fae2aa25f7ac6d28b7792083a5aa5dcf36a84635d84f0f63c380f62751",
+      "reason": "Vehicle report labels, additional metadata and attachment-aware export choices. Full PDF exports append original PDF pages after each entry with separators and validate completeness. Compact exports list filenames. Existing photo layout is retained.",
+      "tests": [
+        "test/features/evidence/vehicle_pdf_attachments_test.dart",
+        "test/features/evidence/evidence_report_service_test.dart",
+        "test/features/meters/capture_reading_screen_test.dart"
+      ]
+    },
+    "lib/features/evidence/presentation/saved_history_pdfs.dart": {
+      "sourceSha256": "2cd1416895f6921080b867d53de2e41be4b1c262860338f873a4c51b9e2b37ca",
+      "localPath": "lib/features/evidence/presentation/saved_history_pdfs.dart",
+      "localSha256": "b07b555db0f09b73365945d97b2a251773b71ed39d4ec795a43f08c4b664f3a7",
+      "reason": "Vehicle report labels, additional metadata and attachment-aware export choices. Full PDF exports append original PDF pages after each entry with separators and validate completeness. Compact exports list filenames. Existing photo layout is retained.",
+      "tests": [
+        "test/features/evidence/vehicle_pdf_attachments_test.dart",
+        "test/features/evidence/evidence_report_service_test.dart",
+        "test/features/meters/capture_reading_screen_test.dart"
+      ]
+    },
+    "lib/features/evidence/presentation/evidence_preview_screen.dart": {
+      "sourceSha256": "aae2c159e158d3025f40ddaac3f7936934076afcb472ececb57c95529e1c551f",
+      "localPath": "lib/features/evidence/presentation/evidence_preview_screen.dart",
+      "localSha256": "fd2a9f31cf1877dc9c9c6965af83e318010a7dfd54fbc956c4d0f1b25baf0f23",
+      "reason": "Vehicle report labels, additional metadata and attachment-aware export choices. Full PDF exports append original PDF pages after each entry with separators and validate completeness. Compact exports list filenames. Existing photo layout is retained.",
+      "tests": [
+        "test/features/evidence/vehicle_pdf_attachments_test.dart",
+        "test/features/evidence/evidence_report_service_test.dart",
+        "test/features/meters/capture_reading_screen_test.dart"
+      ]
+    },
+    "lib/features/evidence/presentation/evidence_photo_mode_sheet.dart": {
+      "sourceSha256": "6b6dc5d342e84d71731129617b8272a7ba7bbcee9bc40e39b36368b74b74ea37",
+      "localPath": "lib/features/evidence/presentation/evidence_photo_mode_sheet.dart",
+      "localSha256": "09c286fff8bfca00863763ebbb866cf0d43966edb695182d435e862251fde1e6",
+      "reason": "Vehicle report labels, additional metadata and attachment-aware export choices. Full PDF exports append original PDF pages after each entry with separators and validate completeness. Compact exports list filenames. Existing photo layout is retained.",
+      "tests": [
+        "test/features/evidence/vehicle_pdf_attachments_test.dart",
+        "test/features/evidence/evidence_report_service_test.dart",
+        "test/features/meters/capture_reading_screen_test.dart"
+      ]
+    },
+    "lib/features/meters/data/drift_meter_repositories.dart": {
+      "sourceSha256": "7e0cb5ec1de5c48d134b01f8ea0c44f878a95509ef0146e1bdf5e4f63ffa9575",
+      "localPath": "lib/features/meters/data/drift_meter_repositories.dart",
+      "localSha256": "85bc6e44cb0b80f0e5b4ef08c64c91ea499e97637977b0086082a7aaabbafd71",
+      "reason": "Schema 8 persists VIN, registration, workshop, integer-cent costs and ordered current/historical PDFs with revision changes. Migrations preserve existing manifests. Native search includes the workshop.",
+      "tests": [
+        "test/core/persistence/vehicle_migration_test.dart",
+        "test/features/meters/vehicle_documents_test.dart",
+        "test/features/meters/custom_activity_test.dart"
+      ]
+    },
+    "lib/features/meters/domain/meter_reading.dart": {
+      "sourceSha256": "5dcf80a132f89038482beb7099a172b1173950d108cc018c49eb93888bd3cf1a",
+      "localPath": "lib/features/meters/domain/meter_reading.dart",
+      "localSha256": "d64b102cd925829d3cc20310193ffc406b455ed095d5128aa70ff96f2c7a8fa9",
+      "reason": "Vehicle labels and km defaults, optional vehicle/entry metadata and PDF versioning. Kilometers compare across activities with matching units. Corrections archive removed PDFs, deletion removes their files, and search includes workshop.",
+      "tests": [
+        "test/features/meters/vehicle_documents_test.dart",
+        "test/features/meters/vehicle_entry_screen_test.dart",
+        "test/features/meters/multiple_photos_test.dart"
+      ]
+    },
+    "lib/features/meters/domain/meter.dart": {
+      "sourceSha256": "ca7d233617b21dc57596274b0a3cdd8618f1c15691be55152e9466279a8784c8",
+      "localPath": "lib/features/meters/domain/meter.dart",
+      "localSha256": "83ddc690c185d407b29824f0d3e16c01e99ed2ec764c688a2fc74ee27b0404d8",
+      "reason": "Vehicle labels and km defaults, optional vehicle/entry metadata and PDF versioning. Kilometers compare across activities with matching units. Corrections archive removed PDFs, deletion removes their files, and search includes workshop.",
+      "tests": [
+        "test/features/meters/vehicle_documents_test.dart",
+        "test/features/meters/vehicle_entry_screen_test.dart",
+        "test/features/meters/multiple_photos_test.dart"
+      ]
+    },
+    "lib/features/meters/domain/meter_reading_page.dart": {
+      "sourceSha256": "5154ad5fbe052d897eb6a99a578124e5c80ecdda4f5b11e97abc9ca25bf71210",
+      "localPath": "lib/features/meters/domain/meter_reading_page.dart",
+      "localSha256": "fa6ca10cd939dd96017cf61b79810cdace41eb00175a263442cb6ce0f4a1d5da",
+      "reason": "Vehicle labels and km defaults, optional vehicle/entry metadata and PDF versioning. Kilometers compare across activities with matching units. Corrections archive removed PDFs, deletion removes their files, and search includes workshop.",
+      "tests": [
+        "test/features/meters/vehicle_documents_test.dart",
+        "test/features/meters/vehicle_entry_screen_test.dart",
+        "test/features/meters/multiple_photos_test.dart"
+      ]
+    },
+    "lib/features/meters/application/reading_photo_session.dart": {
+      "sourceSha256": "0318e4819bc422a28655eb2cc3285da45969b6be59295fba7bbcacba3c225c16",
+      "localPath": "lib/features/meters/application/reading_photo_session.dart",
+      "localSha256": "25954a4f5b080aeadfc72e26d8dfe75c84c856963089c5fa21bc51ae65617747",
+      "reason": "Extend the existing photo draft lifecycle to PDF attachments, external scanner interruptions and all vehicle form fields. Preserve saved references and clean only owned files with concurrent cleanup protection.",
+      "tests": [
+        "test/features/meters/document_draft_test.dart",
+        "test/features/meters/vehicle_entry_screen_test.dart",
+        "test/features/meters/multiple_photo_workflow_test.dart"
+      ]
+    },
+    "lib/features/meters/application/meter_services.dart": {
+      "sourceSha256": "fc81020bb66937ec6be998b73ac76638c8c59862bd6c2faff00e4bd5a6ac28b1",
+      "localPath": "lib/features/meters/application/meter_services.dart",
+      "localSha256": "d2e15824b49055dc16929e4ff89fef22979bcf0b82fabc1da3a9ae6ef1f1f758",
+      "reason": "Vehicle labels and km defaults, optional vehicle/entry metadata and PDF versioning. Kilometers compare across activities with matching units. Corrections archive removed PDFs, deletion removes their files, and search includes workshop.",
+      "tests": [
+        "test/features/meters/vehicle_documents_test.dart",
+        "test/features/meters/vehicle_entry_screen_test.dart",
+        "test/features/meters/multiple_photos_test.dart"
+      ]
+    },
+    "lib/features/meters/presentation/meter_visuals.dart": {
+      "sourceSha256": "e23faa06ee6316a27ceff4bc136bef2947b8c25d21025386c2a7e9e9aa7d01b5",
+      "localPath": "lib/features/meters/presentation/meter_visuals.dart",
+      "localSha256": "62ae7ac2aaea55bb787d4e09b85a50bf7357c331a95b0ecee7a80f003a614f99",
+      "reason": "Vehicle app title, steel-blue/anthracite styling, category icons and wording. Existing navigation and control behavior are retained.",
+      "tests": [
+        "test/widget_test.dart",
+        "test/app/app_theme_test.dart",
+        "test/features/meters/meter_visuals_test.dart"
+      ]
+    },
+    "lib/features/meters/presentation/reading_history_tile.dart": {
+      "sourceSha256": "a58f34df4409fb36f3af1ebaee172f87803fed5ac35a26a5733575466e37e41b",
+      "localPath": "lib/features/meters/presentation/reading_history_tile.dart",
+      "localSha256": "7681f4b5451fca0e19229d76896be8a7f85fd1396c904ef58e2e3b08521e2413",
+      "reason": "Vehicle app title, steel-blue/anthracite styling, category icons and wording. Existing navigation and control behavior are retained.",
+      "tests": [
+        "test/widget_test.dart",
+        "test/app/app_theme_test.dart",
+        "test/features/meters/meter_visuals_test.dart"
+      ]
+    },
+    "lib/features/meters/presentation/edit_reading_screen.dart": {
+      "sourceSha256": "c088cde26b89ac984865f0020f90fdedfd0456d653f1fbe47d86613f17804ed1",
+      "localPath": "lib/features/meters/presentation/edit_reading_screen.dart",
+      "localSha256": "86a8766140515c1bd32d39b621ad3c24384972b9e5ba529efbd44c1364c4267e",
+      "reason": "Vehicle forms/details with optional VIN, registration, workshop, costs and ordered PDFs alongside existing photos. Draft recovery, corrections and attachment-aware report actions retain the established routes.",
+      "tests": [
+        "test/features/meters/vehicle_entry_screen_test.dart",
+        "test/widget_test.dart",
+        "test/features/meters/manual_reading_screen_test.dart",
+        "test/features/meters/document_draft_test.dart"
+      ]
+    },
+    "lib/features/meters/presentation/home_screen.dart": {
+      "sourceSha256": "b4e41b8360935c3c5b4177f6c021787044defd47e26b54d4ceafbfdfb65bd913",
+      "localPath": "lib/features/meters/presentation/home_screen.dart",
+      "localSha256": "62bd8ff5330ec2261a746af9261eec594c7d0c31e8863f18a43df9be33c68963",
+      "reason": "Vehicle app title, steel-blue/anthracite styling, category icons and wording. Existing navigation and control behavior are retained.",
+      "tests": [
+        "test/widget_test.dart",
+        "test/app/app_theme_test.dart",
+        "test/features/meters/meter_visuals_test.dart"
+      ]
+    },
+    "lib/features/meters/presentation/meter_form_screen.dart": {
+      "sourceSha256": "8ef9ccac3156c855d114f3995776882525e3fbf8ae19c4300045fb7133966e1c",
+      "localPath": "lib/features/meters/presentation/meter_form_screen.dart",
+      "localSha256": "d3b5dff98aa3140004b09ffb2790eb78f17fa83401af3992e6cae41ee67fdaf5",
+      "reason": "Vehicle forms/details with optional VIN, registration, workshop, costs and ordered PDFs alongside existing photos. Draft recovery, corrections and attachment-aware report actions retain the established routes.",
+      "tests": [
+        "test/features/meters/vehicle_entry_screen_test.dart",
+        "test/widget_test.dart",
+        "test/features/meters/manual_reading_screen_test.dart",
+        "test/features/meters/document_draft_test.dart"
+      ]
+    },
+    "lib/features/meters/presentation/reminder_delivery_hint.dart": {
+      "sourceSha256": "571ae041fbbf61a064e6bddd320bc5447853398c09db546463b8608352e8eb72",
+      "localPath": "lib/features/meters/presentation/reminder_delivery_hint.dart",
+      "localSha256": "e7f8df291c6804ea4eedbff2c09fb2bdbc27db3cb4a42010071b9a616dc79edb",
+      "reason": "Vehicle-specific native channel identity and reminder copy. Existing reminder processing is retained.",
+      "tests": [
+        "test/core/reminders/reminder_delivery_test.dart",
+        "test/features/meters/strick_reminder_parity_test.dart"
+      ]
+    },
+    "lib/features/meters/presentation/reading_detail_screen.dart": {
+      "sourceSha256": "dd91f6f0f2dd32d63bd920693b35026f1f63eff77b240aba56d680170992dc24",
+      "localPath": "lib/features/meters/presentation/reading_detail_screen.dart",
+      "localSha256": "d199ce4b0bc3e377b97b15c157116c58d972a116f0fe414c610df80d43aabfbb",
+      "reason": "Vehicle forms/details with optional VIN, registration, workshop, costs and ordered PDFs alongside existing photos. Draft recovery, corrections and attachment-aware report actions retain the established routes.",
+      "tests": [
+        "test/features/meters/vehicle_entry_screen_test.dart",
+        "test/widget_test.dart",
+        "test/features/meters/manual_reading_screen_test.dart",
+        "test/features/meters/document_draft_test.dart"
+      ]
+    },
+    "lib/features/meters/presentation/meter_detail_screen.dart": {
+      "sourceSha256": "e9b9699a14a6f10db7a1a6291a4cb4ffe827c2f1ab35ed9875ffbee5552ea28a",
+      "localPath": "lib/features/meters/presentation/meter_detail_screen.dart",
+      "localSha256": "edabb6a66c08a9ed34cc69bb0a96618f53f3b26fa6f95b842a7e592c4f0a7935",
+      "reason": "Vehicle forms/details with optional VIN, registration, workshop, costs and ordered PDFs alongside existing photos. Draft recovery, corrections and attachment-aware report actions retain the established routes.",
+      "tests": [
+        "test/features/meters/vehicle_entry_screen_test.dart",
+        "test/widget_test.dart",
+        "test/features/meters/manual_reading_screen_test.dart",
+        "test/features/meters/document_draft_test.dart"
+      ]
+    },
+    "lib/features/meters/presentation/capture_reading_screen.dart": {
+      "sourceSha256": "90565cdf26dfa1a2469d0a5c8a0bfa692355b59d2c52092d16bc374b4e7ddf8f",
+      "localPath": "lib/features/meters/presentation/capture_reading_screen.dart",
+      "localSha256": "22af536909678edce820eaea1b7cad5ecbc27dcfaadfd11073aa35b106a7a4ce",
+      "reason": "Vehicle forms/details with optional VIN, registration, workshop, costs and ordered PDFs alongside existing photos. Draft recovery, corrections and attachment-aware report actions retain the established routes.",
+      "tests": [
+        "test/features/meters/vehicle_entry_screen_test.dart",
+        "test/widget_test.dart",
+        "test/features/meters/manual_reading_screen_test.dart",
+        "test/features/meters/document_draft_test.dart"
+      ]
+    },
+    "lib/features/meters/presentation/meter_photo_examples.dart": {
+      "sourceSha256": "0c9c3c5749ce97d3f95122023185a50fb731d21a90a4b2a5ba46fc6a5cea36d5",
+      "localPath": "lib/features/meters/presentation/meter_photo_examples.dart",
+      "localSha256": "571b14910e0495bfeb2f17beebb5c5c346f21523ac0c045edf8002998720e346",
+      "reason": "Vehicle app title, steel-blue/anthracite styling, category icons and wording. Existing navigation and control behavior are retained.",
+      "tests": [
+        "test/widget_test.dart",
+        "test/app/app_theme_test.dart",
+        "test/features/meters/meter_visuals_test.dart"
+      ]
+    },
+    "lib/features/meters/presentation/meter_history_screen.dart": {
+      "sourceSha256": "084bd6c6deb5dd32d66fc0c528308350595e003b6f2544fa610931b1d138dfea",
+      "localPath": "lib/features/meters/presentation/meter_history_screen.dart",
+      "localSha256": "28195ac88b78376d7dcb6aff0393f6afe3780aafa71aa2471a4bbf5dfe17fee0",
+      "reason": "Vehicle app title, steel-blue/anthracite styling, category icons and wording. Existing navigation and control behavior are retained.",
+      "tests": [
+        "test/widget_test.dart",
+        "test/app/app_theme_test.dart",
+        "test/features/meters/meter_visuals_test.dart"
+      ]
+    },
+    "lib/features/meters/presentation/care_activity_field.dart": {
+      "sourceSha256": "cac130eff9681423b9cd26b760f526c24b817f61e2e0eb60d23d1a31ced7303f",
+      "localPath": "lib/features/meters/presentation/care_activity_field.dart",
+      "localSha256": "de155749ef09a3524fc012e52f2b2478ce9da1b617f9013f27608da5e3a20e29",
+      "reason": "Vehicle app title, steel-blue/anthracite styling, category icons and wording. Existing navigation and control behavior are retained.",
+      "tests": [
+        "test/widget_test.dart",
+        "test/app/app_theme_test.dart",
+        "test/features/meters/meter_visuals_test.dart"
+      ]
+    },
+    "lib/features/backup/application/backup_file_exporter.dart": {
+      "sourceSha256": "fb75137b2d78701251911c1970e5c70d1a7fb6d6d5eede5d019b07665d2056ca",
+      "localPath": "lib/features/backup/application/backup_file_exporter.dart",
+      "localSha256": "f7c8642f9f26953ab24c9836417225e7827aac4d8107c790067132317a523a15",
+      "reason": "Independent fahrzeugakte_backup identity and .fzbackup extension. Version 6 includes current/historical PDF assets and repairs missing PDFs during restore without replacing newer metadata. Encryption machinery is retained.",
+      "tests": [
+        "test/features/meters/vehicle_documents_test.dart",
+        "test/features/backup/backup_identity_test.dart",
+        "test/features/backup/binary_backup_codec_test.dart",
+        "test/features/backup/backup_file_picker_test.dart"
+      ]
+    },
+    "lib/features/backup/application/encrypted_backup_service.dart": {
+      "sourceSha256": "b711f64fb0a489235c3c1074e48f5ea19f057212c43925f0ae1c4acba4254048",
+      "localPath": "lib/features/backup/application/encrypted_backup_service.dart",
+      "localSha256": "b79569b99560e97d6014500f879819a9b4a7d879b51a9e25c1524955d86aecf6",
+      "reason": "Independent fahrzeugakte_backup identity and .fzbackup extension. Version 6 includes current/historical PDF assets and repairs missing PDFs during restore without replacing newer metadata. Encryption machinery is retained.",
+      "tests": [
+        "test/features/meters/vehicle_documents_test.dart",
+        "test/features/backup/backup_identity_test.dart",
+        "test/features/backup/binary_backup_codec_test.dart",
+        "test/features/backup/backup_file_picker_test.dart"
+      ]
+    },
+    "lib/features/backup/application/binary_backup_codec.dart": {
+      "sourceSha256": "c74b69b4866b8e739a1d2ab188fd6173a8f92163ee9036d773b191662eadf0da",
+      "localPath": "lib/features/backup/application/binary_backup_codec.dart",
+      "localSha256": "0e8afcab0311b5d619d8656a30dc01506fb93306f537443bc7f6d099bb7b59f4",
+      "reason": "Independent fahrzeugakte_backup identity and .fzbackup extension. Version 6 includes current/historical PDF assets and repairs missing PDFs during restore without replacing newer metadata. Encryption machinery is retained.",
+      "tests": [
+        "test/features/meters/vehicle_documents_test.dart",
+        "test/features/backup/backup_identity_test.dart",
+        "test/features/backup/binary_backup_codec_test.dart",
+        "test/features/backup/backup_file_picker_test.dart"
+      ]
+    },
+    "lib/features/backup/application/backup_file_picker.dart": {
+      "sourceSha256": "1d48cafe1681ff7796a34b8746f3196b65dfcef4f3b505062efedf68824a68dc",
+      "localPath": "lib/features/backup/application/backup_file_picker.dart",
+      "localSha256": "eccd745aca557aea17cbc2423457d35c348d80104d7fdaf73aa61385811346fb",
+      "reason": "Independent fahrzeugakte_backup identity and .fzbackup extension. Version 6 includes current/historical PDF assets and repairs missing PDFs during restore without replacing newer metadata. Encryption machinery is retained.",
+      "tests": [
+        "test/features/meters/vehicle_documents_test.dart",
+        "test/features/backup/backup_identity_test.dart",
+        "test/features/backup/binary_backup_codec_test.dart",
+        "test/features/backup/backup_file_picker_test.dart"
+      ]
+    },
+    "lib/features/backup/presentation/settings_screen.dart": {
+      "sourceSha256": "45d0742b8b7e6cef3dea5b51f3190793060f0744de26377a4381a0b4fe9b2302",
+      "localPath": "lib/features/backup/presentation/settings_screen.dart",
+      "localSha256": "f0fdf8b17b070072eead599bab0cbb22486485fffc134f6f1f39abe633e9b394",
+      "reason": "Vehicle privacy and backup wording and link to the actual Pflanzenbuch source template. No new publication or account flow.",
+      "tests": [
+        "test/features/backup/settings_screen_test.dart"
+      ]
+    },
+    "android/app/src/main/kotlin/com/appfactory/pflanzenbuch/ReminderReceivers.kt": {
+      "sourceSha256": "cf9718cb944ff411157ff8133f90f48f531a3c5eccbbd8ec954ac694cc867ed0",
+      "localPath": "android/app/src/main/kotlin/com/appfactory/vehicle_log/ReminderReceivers.kt",
+      "localSha256": "bf8bb19ff3d8c8d3feaf87d31709003ebf2e9ee5ccd2ff6d4accc89cfc7df995",
+      "reason": "Vehicle Android namespace, notification labels and steel-blue vehicle icon. Reminder scheduling and backup channels retain their original behavior.",
+      "tests": [
+        "android/app/src/test/kotlin/com/appfactory/vehicle_log/ReminderAndroidTest.kt",
+        "test/tooling/build_internal_test_aab_test.dart"
+      ]
+    },
+    "android/app/src/main/kotlin/com/appfactory/pflanzenbuch/ReminderStore.kt": {
+      "sourceSha256": "048c11ef4584d62db3785c1b2e33b0d9dd0ee6f6160fd15e8dc344dabc5c948c",
+      "localPath": "android/app/src/main/kotlin/com/appfactory/vehicle_log/ReminderStore.kt",
+      "localSha256": "3328159b3744dfc4dce8d0f72425b5998969d82ac502e62d0c8cfc22ac791b57",
+      "reason": "Vehicle Android namespace, notification labels and steel-blue vehicle icon. Reminder scheduling and backup channels retain their original behavior.",
+      "tests": [
+        "android/app/src/test/kotlin/com/appfactory/vehicle_log/ReminderAndroidTest.kt",
+        "test/tooling/build_internal_test_aab_test.dart"
+      ]
+    },
+    "android/app/src/main/kotlin/com/appfactory/pflanzenbuch/ReminderScheduler.kt": {
+      "sourceSha256": "713cb37e4ee5971ef6260541be3008f6634698cd8a16ab0b807bb14beeef3907",
+      "localPath": "android/app/src/main/kotlin/com/appfactory/vehicle_log/ReminderScheduler.kt",
+      "localSha256": "4ce1064471cb869c8ab8b22fe87765db69668935a45e99bc9d124fc77eb7c994",
+      "reason": "Vehicle Android namespace, notification labels and steel-blue vehicle icon. Reminder scheduling and backup channels retain their original behavior.",
+      "tests": [
+        "android/app/src/test/kotlin/com/appfactory/vehicle_log/ReminderAndroidTest.kt",
+        "test/tooling/build_internal_test_aab_test.dart"
+      ]
+    },
+    "android/app/src/main/kotlin/com/appfactory/pflanzenbuch/MainActivity.kt": {
+      "sourceSha256": "21e7e5b0c36828040bca1dd06bca682f815fbabed1c02403b21189dc2e9949d9",
+      "localPath": "android/app/src/main/kotlin/com/appfactory/vehicle_log/MainActivity.kt",
+      "localSha256": "f8140f48ff797930be068120590c453b68fd2baf4188c2e5e6e15f333165b6a3",
+      "reason": "Vehicle Android namespace, notification labels and steel-blue vehicle icon. Reminder scheduling and backup channels retain their original behavior.",
+      "tests": [
+        "android/app/src/test/kotlin/com/appfactory/vehicle_log/ReminderAndroidTest.kt",
+        "test/tooling/build_internal_test_aab_test.dart"
+      ]
+    },
+    "android/app/src/main/res/drawable/ic_stat_plant.xml": {
+      "sourceSha256": "035f093d17b146ed3b42e7e7b3db41eb39dbb647eef048ebfc4b676b13071ad5",
+      "localPath": "android/app/src/main/res/drawable/ic_stat_vehicle.xml",
+      "localSha256": "e8f7c814d1522321c1e12c07d0cfa92baca0d0551a443c706e3edcc7df53958a",
+      "reason": "Vehicle Android namespace, notification labels and steel-blue vehicle icon. Reminder scheduling and backup channels retain their original behavior.",
+      "tests": [
+        "android/app/src/test/kotlin/com/appfactory/vehicle_log/ReminderAndroidTest.kt",
+        "test/tooling/build_internal_test_aab_test.dart"
+      ]
+    }
+  }
+}

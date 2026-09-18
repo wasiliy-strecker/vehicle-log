@@ -1,0 +1,716 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../../../app/app_providers.dart';
+import '../../../app/widgets/app_snack_bar.dart';
+import '../../../core/utils/formatters.dart';
+import '../application/backup_file_exporter.dart';
+import '../application/backup_file_picker.dart';
+import '../application/encrypted_backup_service.dart';
+
+typedef ExternalUrlLauncher = Future<bool> Function(Uri uri);
+
+class SettingsScreen extends ConsumerStatefulWidget {
+  const SettingsScreen({super.key, this.externalUrlLauncher});
+
+  final ExternalUrlLauncher? externalUrlLauncher;
+
+  @override
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  bool _working = false;
+  String _workingMessage = '';
+  BackupProgress? _backupProgress;
+
+  @override
+  Widget build(BuildContext context) {
+    final appVersion = ref.watch(appVersionProvider);
+    final appTitle = appVersion.isEmpty
+        ? 'Fahrzeugakte'
+        : 'Fahrzeugakte $appVersion';
+    return PopScope(
+      canPop: !_working,
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Einstellungen')),
+        body: Stack(
+          children: [
+            AbsorbPointer(
+              absorbing: _working,
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                children: [
+                  Text(
+                    'Datensicherung',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Card(
+                    child: Column(
+                      children: [
+                        ListTile(
+                          leading: const Icon(Icons.lock_outline),
+                          title: const Text('Verschlüsseltes Backup erstellen'),
+                          subtitle: const Text(
+                            'Fahrzeuge, Fotos, Fahrzeugprotokolle und Korrekturverläufe',
+                          ),
+                          trailing: const Icon(Icons.chevron_right),
+                          enabled: !_working,
+                          onTap: _createBackup,
+                        ),
+                        const Divider(height: 1),
+                        ListTile(
+                          leading: const Icon(
+                            Icons.settings_backup_restore_outlined,
+                          ),
+                          title: const Text('Backup wiederherstellen'),
+                          subtitle: const Text(
+                            'Vorhandene neuere Einträge bleiben erhalten',
+                          ),
+                          trailing: const Icon(Icons.chevron_right),
+                          enabled: !_working,
+                          onTap: _restoreBackup,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    'Datenschutz',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(18),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Fotos, Einträge und PDFs werden lokal auf deinem Gerät verarbeitet. Die App überträgt deine Fahrzeugdaten nicht an einen Server.',
+                          ),
+                          const SizedBox(height: 10),
+                          const Text(
+                            'Deine Daten bleiben lokal auf deinem Gerät gespeichert, bis du sie in der App löschst oder die App-Daten entfernst.',
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            'Entwickler und Datenschutzkontakt\n'
+                            'Wasiliy Strecker · AppFabrik AI',
+                            style: TextStyle(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              key: const ValueKey('open-privacy-policy'),
+                              onPressed: _openPrivacyPolicy,
+                              icon: const Icon(Icons.open_in_new_rounded),
+                              label: const Text('Datenschutzerklärung öffnen'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    'Über Fahrzeugakte',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Card(
+                    clipBehavior: Clip.antiAlias,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(18),
+                          child: Text(
+                            appTitle,
+                            style: const TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                        const Divider(height: 1),
+                        ListTile(
+                          key: const ValueKey('open-source-code'),
+                          leading: const Icon(Icons.code_rounded),
+                          title: const Text('Codebasis: Mein Pflanzenbuch'),
+                          subtitle: const Text('Open Source · MPL 2.0'),
+                          trailing: const Icon(Icons.open_in_new_rounded),
+                          enabled: !_working,
+                          onTap: _openSourceCode,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (_working)
+              Positioned.fill(
+                child: _BackupWorkOverlay(
+                  progress: _backupProgress,
+                  fallbackMessage: _workingMessage,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openPrivacyPolicy() async {
+    final text = await rootBundle.loadString('PRIVACY.md');
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Datenschutzerklärung'),
+        content: SizedBox(
+          width: 560,
+          child: SingleChildScrollView(child: SelectableText(text)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Schließen'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openSourceCode() async {
+    await _openExternalUrl(
+      Uri.parse('https://github.com/wasiliy-strecker/plant-care-log'),
+      'Der Quellcode konnte nicht geöffnet werden. Bitte versuche es erneut.',
+    );
+  }
+
+  Future<void> _openExternalUrl(Uri uri, String failureMessage) async {
+    final launcher = widget.externalUrlLauncher ?? _launchExternalUrl;
+    var opened = false;
+    try {
+      opened = await launcher(uri);
+    } on Object {
+      opened = false;
+    }
+    if (!opened && mounted) {
+      _showMessage(failureMessage);
+    }
+  }
+
+  Future<void> _createBackup() async {
+    final password = await _askPassword(confirm: true);
+    if (password == null) return;
+    setState(() {
+      _working = true;
+      _workingMessage = 'Dateien werden vorbereitet …';
+      _backupProgress = const BackupProgress.preparing();
+    });
+    try {
+      final backup = await ref
+          .read(encryptedBackupServiceProvider)
+          .create(
+            password,
+            onProgress: (progress) {
+              if (mounted) setState(() => _backupProgress = progress);
+            },
+          );
+      if (!mounted) return;
+      final exporter = ref.read(backupFileExporterProvider);
+      if (exporter.supportsDirectSave) {
+        await _saveBackup(backup, exporter);
+      } else {
+        _clearWorkingState();
+        await exporter.share(backup);
+      }
+    } on BackupException catch (error) {
+      _showBackupError(error);
+    } catch (error) {
+      _showMessage('Backup konnte nicht erstellt werden: $error');
+    } finally {
+      if (mounted) {
+        _clearWorkingState();
+      }
+    }
+  }
+
+  Future<void> _saveBackup(
+    CreatedBackup backup,
+    BackupFileExporter exporter,
+  ) async {
+    while (mounted) {
+      setState(() {
+        _working = true;
+        _workingMessage = 'Backup wird gespeichert …';
+        _backupProgress = null;
+      });
+      BackupSaveResult? result;
+      Object? saveError;
+      try {
+        result = await exporter.save(backup);
+      } catch (error) {
+        saveError = error;
+      }
+      if (!mounted) return;
+      _clearWorkingState();
+
+      if (result?.status == BackupSaveStatus.saved) {
+        final share = await _showBackupSavedDialog(
+          backup,
+          result!.fileName ?? _backupFileName(backup.path),
+        );
+        if (share && mounted) {
+          try {
+            await exporter.share(backup);
+          } catch (error) {
+            _showMessage('Backup konnte nicht geteilt werden: $error');
+          }
+        }
+        return;
+      }
+
+      final action = await _showBackupNotSavedDialog(
+        saveFailed: saveError != null,
+      );
+      if (!mounted) return;
+      if (action == _UnsavedBackupAction.retry) continue;
+      try {
+        await exporter.discard(backup);
+      } catch (_) {
+        // The system cache or the next backup will remove a stale temp file.
+      }
+      return;
+    }
+  }
+
+  Future<bool> _showBackupSavedDialog(
+    CreatedBackup backup,
+    String fileName,
+  ) async {
+    final sizeInMb = backup.sizeBytes / (1024 * 1024);
+    return await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            scrollable: true,
+            icon: const Icon(Icons.check_circle_rounded),
+            title: const Text('Backup gespeichert'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('$fileName wurde im gewählten Speicherort abgelegt.'),
+                const SizedBox(height: 12),
+                Text(
+                  '${_countLabel(backup.preview.meterCount, 'Fahrzeug', 'Fahrzeuge')} · '
+                  '${_countLabel(backup.preview.readingCount, 'Eintrag', 'Einträge')} · '
+                  '${_countLabel(backup.preview.exportCount, 'Fahrzeugprotokoll', 'Fahrzeugprotokolle')}\n'
+                  '${sizeInMb.toStringAsFixed(1)} MB · '
+                  'Erstellt am ${formatDateTime(backup.preview.createdAt)} Uhr',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                FilledButton.icon(
+                  onPressed: () => Navigator.pop(context, false),
+                  icon: const Icon(Icons.check_rounded),
+                  label: const Text('Fertig', textAlign: TextAlign.center),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: () => Navigator.pop(context, true),
+                  icon: const Icon(Icons.ios_share_outlined),
+                  label: const Text('Teilen', textAlign: TextAlign.center),
+                ),
+              ],
+            ),
+          ),
+        ) ??
+        false;
+  }
+
+  Future<_UnsavedBackupAction> _showBackupNotSavedDialog({
+    required bool saveFailed,
+  }) async {
+    return await showDialog<_UnsavedBackupAction>(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => PopScope(
+            canPop: false,
+            child: AlertDialog(
+              scrollable: true,
+              icon: Icon(
+                saveFailed
+                    ? Icons.error_outline_rounded
+                    : Icons.info_outline_rounded,
+              ),
+              title: Text(
+                saveFailed
+                    ? 'Backup konnte nicht gespeichert werden'
+                    : 'Backup noch nicht gespeichert',
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'Die verschlüsselte Datei liegt nur vorübergehend in der App. Wähle einen Speicherort, damit das Backup erhalten bleibt.',
+                  ),
+                  const SizedBox(height: 20),
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.error,
+                      foregroundColor: Theme.of(context).colorScheme.onError,
+                    ),
+                    onPressed: () =>
+                        Navigator.pop(context, _UnsavedBackupAction.discard),
+                    icon: const Icon(Icons.delete_outline),
+                    label: const Text(
+                      'Backup verwerfen',
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: () =>
+                        Navigator.pop(context, _UnsavedBackupAction.retry),
+                    icon: const Icon(Icons.folder_open_outlined),
+                    label: const Text(
+                      'Speicherort wählen',
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ) ??
+        _UnsavedBackupAction.discard;
+  }
+
+  void _clearWorkingState() {
+    if (!mounted) return;
+    setState(() {
+      _working = false;
+      _workingMessage = '';
+      _backupProgress = null;
+    });
+  }
+
+  Future<void> _restoreBackup() async {
+    String? path;
+    try {
+      path = await ref.read(backupFilePickerProvider).pick();
+    } on BackupFilePickException catch (error) {
+      _showMessage(switch (error.failure) {
+        BackupFilePickFailure.invalidExtension =>
+          'Bitte wähle eine Fahrzeugakte-Backup-Datei (.fzbackup).',
+        BackupFilePickFailure.unreadableFile =>
+          'Die ausgewählte Backup-Datei konnte nicht geöffnet werden.',
+      });
+      return;
+    } catch (error) {
+      _showMessage('Backup-Datei konnte nicht ausgewählt werden: $error');
+      return;
+    }
+    if (path == null || !mounted) return;
+    final password = await _askPassword(confirm: false);
+    if (password == null) return;
+    setState(() {
+      _working = true;
+      _workingMessage = 'Backup wird geprüft …';
+      _backupProgress = null;
+    });
+    try {
+      final service = ref.read(encryptedBackupServiceProvider);
+      final preview = await service.inspect(path, password);
+      if (!mounted) return;
+      final confirmed =
+          await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Backup wiederherstellen?'),
+              content: Text(
+                '${_countLabel(preview.meterCount, 'Fahrzeug', 'Fahrzeuge')}, ${_countLabel(preview.readingCount, 'Eintrag', 'Einträge')} und ${_countLabel(preview.exportCount, 'Fahrzeugprotokoll', 'Fahrzeugprotokolle')} werden importiert. Neuere lokale Einträge werden nicht überschrieben.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Abbrechen'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('Wiederherstellen'),
+                ),
+              ],
+            ),
+          ) ??
+          false;
+      if (!confirmed) return;
+      setState(() => _workingMessage = 'Backup wird wiederhergestellt …');
+      final refresh = ref.read(restoreRevisionProvider.notifier);
+      late final BackupImportResult result;
+      try {
+        result = await service.restore(path, password);
+      } finally {
+        // A failed import may already have written some records.
+        refresh.refresh();
+      }
+      if (mounted) {
+        _showMessage(
+          '${_countLabel(result.meters, 'Fahrzeug', 'Fahrzeuge')} und ${_countLabel(result.readings, 'Eintrag', 'Einträge')} wiederhergestellt. ${result.skipped} unveränderte oder neuere Einträge übersprungen.'
+          '${result.repairedPhotos > 0 ? ' ${_countLabel(result.repairedPhotos, 'Foto', 'Fotos')} repariert.' : ''}'
+          '${result.reminderIssues > 0 ? ' Bei ${result.reminderIssues} Einträgen konnte die Erinnerung nicht bestätigt werden. Bitte prüfe die Erinnerungen in der Übersicht.' : ''}',
+        );
+      }
+    } on BackupException catch (error) {
+      _showBackupError(error);
+    } catch (error) {
+      _showMessage('Backup konnte nicht wiederhergestellt werden: $error');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _working = false;
+          _workingMessage = '';
+          _backupProgress = null;
+        });
+      }
+    }
+  }
+
+  Future<String?> _askPassword({required bool confirm}) {
+    return showDialog<String>(
+      context: context,
+      builder: (_) => _BackupPasswordDialog(confirm: confirm),
+    );
+  }
+
+  void _showBackupError(BackupException error) {
+    final message = switch (error.failure) {
+      BackupFailure.passwordTooShort =>
+        'Das Passwort muss mindestens 6 Zeichen lang sein.',
+      BackupFailure.invalidPassword =>
+        'Das Passwort ist falsch oder das Backup wurde verändert.',
+      BackupFailure.missingFile =>
+        'Eine zu sichernde Datei fehlt: ${error.detail}',
+      BackupFailure.integrityMismatch =>
+        'Eine Datei im Backup ist beschädigt oder unvollständig.',
+      BackupFailure.unsupportedVersion =>
+        'Diese Backup-Version wird nicht unterstützt.',
+      BackupFailure.invalidFormat =>
+        'Die ausgewählte Datei ist kein gültiges Fahrzeugakte-Backup.',
+    };
+    _showMessage(message);
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(AppSnackBar(message: message));
+  }
+}
+
+Future<bool> _launchExternalUrl(Uri uri) {
+  return launchUrl(uri, mode: LaunchMode.externalApplication);
+}
+
+enum _UnsavedBackupAction { retry, discard }
+
+String _backupFileName(String path) => path.split(RegExp(r'[/\\]')).last;
+
+String _countLabel(int count, String singular, String plural) {
+  return '$count ${count == 1 ? singular : plural}';
+}
+
+class _BackupWorkOverlay extends StatelessWidget {
+  const _BackupWorkOverlay({
+    required this.progress,
+    required this.fallbackMessage,
+  });
+
+  final BackupProgress? progress;
+  final String fallbackMessage;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final value = progress?.fraction;
+    final title = progress == null
+        ? fallbackMessage
+        : switch (progress!.phase) {
+            BackupProgressPhase.preparing => 'Dateien werden vorbereitet',
+            BackupProgressPhase.encrypting => 'Backup wird verschlüsselt',
+            BackupProgressPhase.packaging => 'Backup wird abgeschlossen',
+            BackupProgressPhase.complete => 'Backup ist bereit',
+          };
+    final detail = progress == null
+        ? 'Bitte einen Moment warten.'
+        : progress!.totalItems <= 0
+        ? 'Fotos und Fahrzeugprotokolle werden zusammengestellt.'
+        : '${progress!.completedItems} von ${progress!.totalItems} Dateien';
+
+    return ColoredBox(
+      color: colors.surface.withValues(alpha: 0.94),
+      child: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Card(
+              key: const ValueKey('backup-progress-overlay'),
+              elevation: 2,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: colors.primaryContainer,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Icon(
+                            progress?.phase == BackupProgressPhase.complete
+                                ? Icons.check_rounded
+                                : Icons.shield_outlined,
+                            size: 30,
+                            color: colors.onPrimaryContainer,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 220),
+                        child: Text(
+                          title,
+                          key: ValueKey(title),
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        detail,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(99),
+                        child: LinearProgressIndicator(
+                          key: const ValueKey('backup-linear-progress'),
+                          value: value,
+                          minHeight: 8,
+                        ),
+                      ),
+                      if (value != null) ...[
+                        const SizedBox(height: 10),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            '${(value * 100).round()} %',
+                            style: Theme.of(context).textTheme.labelLarge
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BackupPasswordDialog extends StatefulWidget {
+  const _BackupPasswordDialog({required this.confirm});
+
+  final bool confirm;
+
+  @override
+  State<_BackupPasswordDialog> createState() => _BackupPasswordDialogState();
+}
+
+class _BackupPasswordDialogState extends State<_BackupPasswordDialog> {
+  final TextEditingController _first = TextEditingController();
+  final TextEditingController _second = TextEditingController();
+
+  @override
+  void dispose() {
+    _first.dispose();
+    _second.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(
+        widget.confirm ? 'Backup-Passwort festlegen' : 'Backup-Passwort',
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _first,
+            obscureText: true,
+            autofocus: true,
+            decoration: const InputDecoration(
+              labelText: 'Passwort',
+              helperText: 'Mindestens 6 Zeichen',
+            ),
+          ),
+          if (widget.confirm) ...[
+            const SizedBox(height: 12),
+            TextField(
+              controller: _second,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'Passwort wiederholen',
+              ),
+            ),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Abbrechen'),
+        ),
+        FilledButton(
+          onPressed: () {
+            if (_first.text.length < 6) return;
+            if (widget.confirm && _first.text != _second.text) return;
+            Navigator.pop(context, _first.text);
+          },
+          child: const Text('Weiter'),
+        ),
+      ],
+    );
+  }
+}

@@ -1,0 +1,96 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:fahrzeugakte/app/widgets/pdf_export_progress_dialog.dart';
+
+void main() {
+  testWidgets('PDF progress dialog blocks back and closes after completion', (
+    tester,
+  ) async {
+    final operation = Completer<String>();
+    String? result;
+    var operationStarted = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => FilledButton(
+              onPressed: () async {
+                result = await runWithPdfExportProgress(
+                  context,
+                  description:
+                      'Fahrzeugprotokolldaten werden zusammengestellt.',
+                  operation: () {
+                    operationStarted = true;
+                    return operation.future;
+                  },
+                );
+              },
+              child: const Text('PDF erstellen'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('PDF erstellen'));
+    expect(operationStarted, isFalse);
+    await tester.pump();
+    expect(find.text('Fahrzeugprotokoll wird erstellt'), findsOneWidget);
+    expect(operationStarted, isTrue);
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('Fahrzeugprotokoll wird erstellt'), findsOneWidget);
+    expect(find.byKey(const ValueKey('pdf-export-progress')), findsOneWidget);
+    expect(await tester.binding.handlePopRoute(), isTrue);
+    await tester.pump();
+    expect(find.text('Fahrzeugprotokoll wird erstellt'), findsOneWidget);
+
+    operation.complete('fertig');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Fahrzeugprotokoll wird erstellt'), findsNothing);
+    expect(result, 'fertig');
+  });
+
+  testWidgets('PDF progress dialog closes when creation fails', (tester) async {
+    Object? caughtError;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => FilledButton(
+              onPressed: () async {
+                try {
+                  await runWithPdfExportProgress<void>(
+                    context,
+                    description:
+                        'Fahrzeugprotokolldaten werden zusammengestellt.',
+                    operation: () => Future<void>.error(
+                      StateError('PDF-Erstellung fehlgeschlagen'),
+                    ),
+                  );
+                } on Object catch (error) {
+                  caughtError = error;
+                }
+              },
+              child: const Text('PDF erstellen'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('PDF erstellen'));
+    await tester.pump();
+    expect(find.text('Fahrzeugprotokoll wird erstellt'), findsOneWidget);
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('Fahrzeugprotokoll wird erstellt'), findsNothing);
+    expect(caughtError, isA<StateError>());
+  });
+}

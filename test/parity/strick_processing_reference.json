@@ -1,0 +1,17 @@
+{
+  "sourceCommit": "20c1baef44225efbc72c51b6aa5b6537850903b3",
+  "files": {
+    "lib/app/app_router.dart": "38bb6a69f79f84a349c7f4a26e07c8d6681486e96870157a040d3042ffe0a8fe",
+    "lib/app/widgets/app_snack_bar.dart": "425510d3f8d9aebf2620afc142ee6c183324529416a21b3532b9715c907d54a5",
+    "lib/core/files/meter_photo_repository.dart": "804953296e72e0431e08d8371cd36cc5d1681a73b2d558cdb627d510946226e6",
+    "lib/core/files/meter_photo_store.dart": "9df9bcf98d79eb7ede7b9a7ffbf71361c0408a12fc89aa3dc73a884f556b7305",
+    "lib/core/files/photo_draft_store.dart": "4aba43983c7bd7903fb3ec556a29c36ffa53e268e7482eb0b68c7d7d203e44dd",
+    "lib/core/integrity/integrity_service.dart": "5cc3c02dd5dd93bb021b916e6eb6c3d83515f3ae2a323417f447c3a83f6c1eaf",
+    "lib/core/reminders/reminder_delivery_state.dart": "f117741105ae595197358b82c2cb42933741a85d38d4b6574b042111854cae51",
+    "lib/features/meters/application/reading_photo_session.dart": "0318e4819bc422a28655eb2cc3285da45969b6be59295fba7bbcacba3c225c16",
+    "lib/features/meters/application/reading_revision_photos.dart": "90f6cbae81abf36ef1f0a3ab6c7b55d758691174a072fd50341ab1740ac4c577",
+    "lib/features/meters/presentation/reading_photo_gallery.dart": "20cbfbcd68e719ab7c3499d4dbf29ef288621af29f5e3638c61d9133f8def5bb",
+    "lib/features/evidence/domain/evidence_export.dart": "1545531a731f0ba6234c3144c51d04ae25ec673fd9590e954298511400454c37",
+    "lib/main.dart": "4685b4555f8108a3a11c95e668a44104ae95d98345a44d5391d832600eb75405"
+  }
+}

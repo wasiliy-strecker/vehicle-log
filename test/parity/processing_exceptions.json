@@ -1,0 +1,180 @@
+{
+  "sourceCommit": "5327f68ed53287318c9ea351d9727b2184665e50",
+  "files": {
+    "lib/core/files/evidence_photo_asset_repository.dart": {
+      "sourceSha256": "8131477236ff43d1688434c4f5e4a7eaa75dd05c8b2ab3467dfa2f3de25cf13d",
+      "localSha256": "fd56aca7f6bf902c01442b5ad40dd386eb4117f6d4b058ad32ff2f0a342b7552",
+      "reason": "Validate native PDF photo dimensions and use a new bounded-photo cache version.",
+      "tests": [
+        "test/core/files/native_photo_bounds_test.dart",
+        "test/core/files/evidence_photo_asset_repository_test.dart"
+      ]
+    },
+    "lib/core/files/meter_photo_optimizer.dart": {
+      "sourceSha256": "617b77af40dd887878feb66f735ac7a6974fe935f6f45338e9a31ef8854304e3",
+      "localSha256": "c8757d1b2d45de216e7d233e00303c285a7288d33a368640d4d4aaed37b7e960",
+      "reason": "Enforce the actual 1920-pixel longest edge after native compression, retaining the Dart fallback.",
+      "tests": [
+        "test/core/files/native_photo_bounds_test.dart",
+        "test/core/files/meter_photo_store_test.dart"
+      ]
+    },
+    "lib/core/ocr/meter_ocr_repository.dart": {
+      "sourceSha256": "d8e228ae57811046849222cbe4edf8ab18281a1bdc40764a45d5252a91d81927",
+      "localSha256": "86a04bbc43af4c39d7036c502f583887c0a789df29d11d81277ae7a30b63bab7",
+      "reason": "Accept single digits and reject complete decimal and range expressions for new integer-only readings.",
+      "tests": [
+        "test/core/ocr/meter_reading_candidate_extractor_test.dart",
+        "test/features/meters/photo_capture_recovery_test.dart"
+      ]
+    },
+    "lib/features/meters/domain/reading_value.dart": {
+      "sourceSha256": "de569dcce8a3e7d72812fa7597f03f6c20ba49046e7a388eb22b3b4d37ea3cc4",
+      "localSha256": "d9e08d100aab64243150a1a727aaf940766e00f2a7646b7dac35437b9eea97db",
+      "reason": "Add strict whole-number input parsing while retaining unchanged historical decimal values and representation.",
+      "tests": [
+        "test/features/meters/reading_value_test.dart",
+        "test/features/meters/reading_workflows_regression_test.dart",
+        "test/features/backup/backup_photo_repair_test.dart"
+      ]
+    },
+    "lib/core/files/meter_photo_store.dart": {
+      "sourceSha256": "6745a3652bf217925f6374300467fc7ee529099bb86f44cf005d7bb3b8b9c393",
+      "localSha256": "9df9bcf98d79eb7ede7b9a7ffbf71361c0408a12fc89aa3dc73a884f556b7305",
+      "reason": "Adopt the identical Strick batch capture and recovery implementation while retaining optimization and cleanup.",
+      "tests": [
+        "test/core/files/meter_photo_store_test.dart",
+        "test/features/meters/photo_capture_recovery_test.dart"
+      ]
+    },
+    "lib/core/persistence/app_database.dart": {
+      "sourceSha256": "cde5acf1ad2c23f01c78cd808febc8584e171243af7d310bc369d5ad6a7094db",
+      "localSha256": "aebd51c8f959b633fdb60325d2dba9bcd66b1010f167aa95cb5c617f953b5f1c",
+      "reason": "Schema 7 adds nullable custom activity labels while preserving care fields, ordered photos, revision photo changes and resumable migrations. Fahrzeugakte: Schema 8 persists VIN, registration, workshop, integer-cent costs and ordered current/historical PDFs with revision changes. Migrations preserve existing manifests. Native search includes the workshop.",
+      "tests": [
+        "test/core/persistence/app_database_migration_test.dart",
+        "test/features/meters/plant_care_test.dart",
+        "test/features/meters/custom_activity_test.dart",
+        "test/core/persistence/custom_activity_migration_test.dart",
+        "test/core/persistence/vehicle_migration_test.dart",
+        "test/features/meters/vehicle_documents_test.dart"
+      ]
+    },
+    "lib/core/persistence/app_database.g.dart": {
+      "sourceSha256": "b65e72efd885416543813f3a296ef3c0b4b70e0c2cbe32e5f08fd8be9a437534",
+      "localSha256": "be3b524181f5f4b438f4be099fd48cc5e3d65d8aea49b354dcd0cf106a659a77",
+      "reason": "Regenerate Drift for schema 7 with custom activity labels, preserving care fields and ordered photos. Fahrzeugakte: Schema 8 persists VIN, registration, workshop, integer-cent costs and ordered current/historical PDFs with revision changes. Migrations preserve existing manifests. Native search includes the workshop.",
+      "tests": [
+        "test/core/persistence/app_database_migration_test.dart",
+        "test/features/meters/plant_multiple_photos_test.dart",
+        "test/features/meters/custom_activity_test.dart",
+        "test/core/persistence/custom_activity_migration_test.dart",
+        "test/core/persistence/vehicle_migration_test.dart",
+        "test/features/meters/vehicle_documents_test.dart"
+      ]
+    },
+    "lib/features/backup/application/binary_backup_codec.dart": {
+      "sourceSha256": "e90cfd4c98a594ebb2e9adba9f2f1299c894f23c377aebf7e05ae68a12078124",
+      "localSha256": "0e8afcab0311b5d619d8656a30dc01506fb93306f537443bc7f6d099bb7b59f4",
+      "reason": "Write version 5 with custom activity labels and read original version-3 and version-4 authentication under the independent Fahrzeugakte backup identity. Fahrzeugakte: Independent fahrzeugakte_backup identity and .fzbackup extension. Version 6 includes current/historical PDF assets and repairs missing PDFs during restore without replacing newer metadata. Encryption machinery is retained.",
+      "tests": [
+        "test/features/backup/binary_backup_codec_test.dart",
+        "test/features/backup/multiple_photo_backup_test.dart",
+        "test/features/backup/backup_identity_test.dart",
+        "test/features/meters/custom_activity_test.dart",
+        "test/features/backup/legacy_v4_backup_test.dart",
+        "test/features/meters/vehicle_documents_test.dart",
+        "test/features/backup/backup_file_picker_test.dart"
+      ]
+    },
+    "lib/features/meters/data/drift_meter_repositories.dart": {
+      "sourceSha256": "8c5a4c08c3d4ab76a402d2a0f450f476d074e7f3275f5509c0dff51974345e1d",
+      "localSha256": "85bc6e44cb0b80f0e5b4ef08c64c91ea499e97637977b0086082a7aaabbafd71",
+      "reason": "Persist plant care fields and ordered photos, expose custom activity labels in the dashboard and search, query reusable labels without loading photo metadata, and match custom labels with escaped Unicode-aware literal searches like the in-memory repository. Fahrzeugakte: Schema 8 persists VIN, registration, workshop, integer-cent costs and ordered current/historical PDFs with revision changes. Migrations preserve existing manifests. Native search includes the workshop.",
+      "tests": [
+        "test/features/meters/multiple_photos_test.dart",
+        "test/features/meters/plant_multiple_photos_test.dart",
+        "test/features/meters/custom_activity_test.dart",
+        "test/core/persistence/vehicle_migration_test.dart",
+        "test/features/meters/vehicle_documents_test.dart"
+      ]
+    },
+    "lib/features/meters/data/in_memory_meter_repositories.dart": {
+      "sourceSha256": "8a108d2cdae1fff1d670d80c5846bc2c8d6ce679d29bcc9d34f08e36a53b1575",
+      "localSha256": "f33cac69dc819a28bf5006844398536affa02dec6f23b6d1e81f189960dab85e",
+      "reason": "Expose custom activity labels and optional height in the web dashboard and supply the same reusable activity suggestions as SQLite.",
+      "tests": [
+        "test/features/meters/plant_care_test.dart",
+        "test/features/meters/custom_activity_test.dart"
+      ]
+    },
+    "lib/features/meters/domain/meter_dashboard_item.dart": {
+      "sourceSha256": "855f4db13bd89164e2a7ff9f6bd61b8022aa642158e6776f0d80abb70c04e733",
+      "localSha256": "d2004f9f249351d33fcea744b409ff0acbe465c66c03b9858df303c8063bc720",
+      "reason": "Display the latest standard or custom activity and preserve optional height without showing absent measurements as zero.",
+      "tests": [
+        "test/features/meters/plant_care_test.dart",
+        "test/features/meters/custom_activity_test.dart"
+      ]
+    },
+    "lib/core/files/meter_photo_repository.dart": {
+      "sourceSha256": "bb1c37d78b3a195452c851ba8da11620950bab2481ab87280ebef08b2460b4aa",
+      "localSha256": "804953296e72e0431e08d8371cd36cc5d1681a73b2d558cdb627d510946226e6",
+      "reason": "Adopt the Strick 20c1bae multi-photo capture contract with ordered batches, progress and partial failures.",
+      "tests": [
+        "test/features/meters/multiple_photo_workflow_test.dart",
+        "test/core/files/meter_photo_store_test.dart"
+      ]
+    },
+    "lib/core/integrity/integrity_service.dart": {
+      "sourceSha256": "8d6a25dbc93d39a8067b46ee42ac20429c78f15210373f2309c88646dc703a92",
+      "localSha256": "aa27e4b5d7e3095df464ae4910e0204339e0858d2042bb06fcea4785ab79c71f",
+      "reason": "Hash all ordered current photos without device-local paths, preserving legacy serialization and plant care fields. Fahrzeugakte: Include PDF identity, order and metadata in manifests while excluding relocatable current/historical PDF paths, matching existing photo handling.",
+      "tests": [
+        "test/features/meters/multiple_photos_test.dart",
+        "test/features/meters/plant_multiple_photos_test.dart",
+        "test/features/meters/vehicle_documents_test.dart"
+      ]
+    },
+    "lib/features/evidence/domain/evidence_export.dart": {
+      "sourceSha256": "9a5a050f97354b76002f23e3a16cc8728d2d7b9f47fc97608478bd80c6842e51",
+      "localSha256": "0cd2ba4ec8c191feb22cab7103836c82a040bacecfed620795e9b5db3fb9928f",
+      "reason": "Use the shared plural current-photo mode label while keeping legacy allPhotos readable. Fahrzeugakte: Vehicle report labels, additional metadata and attachment-aware export choices. Full PDF exports append original PDF pages after each entry with separators and validate completeness. Compact exports list filenames. Existing photo layout is retained.",
+      "tests": [
+        "test/features/evidence/evidence_photo_mode_sheet_test.dart",
+        "test/features/evidence/multiple_photo_pdf_test.dart",
+        "test/features/evidence/vehicle_pdf_attachments_test.dart",
+        "test/features/evidence/evidence_report_service_test.dart",
+        "test/features/meters/capture_reading_screen_test.dart"
+      ]
+    },
+    "lib/features/meters/application/reading_revision_photos.dart": {
+      "sourceSha256": "8151a48a68abd61860871628fca19baf864ca3016b590cc7adfe149c43637905",
+      "localSha256": "90f6cbae81abf36ef1f0a3ab6c7b55d758691174a072fd50341ab1740ac4c577",
+      "reason": "Resolve ordered before/after photo IDs as in Strick, retaining legacy single-photo revisions.",
+      "tests": [
+        "test/features/meters/reading_revision_photos_test.dart",
+        "test/features/meters/multiple_photos_test.dart"
+      ]
+    },
+    "lib/features/meters/domain/meter_reading_page.dart": {
+      "sourceSha256": "484ce279d4078ffd664feab27d8cb30bcf552d7ffd134fce82c79bc5de78ae13",
+      "localSha256": "fa6ca10cd939dd96017cf61b79810cdace41eb00175a263442cb6ce0f4a1d5da",
+      "reason": "Include standard and custom activity labels in plant history searches, matching custom labels with the same escaped Unicode-aware literal searches as SQLite. Fahrzeugakte: Vehicle labels and km defaults, optional vehicle/entry metadata and PDF versioning. Kilometers compare across activities with matching units. Corrections archive removed PDFs, deletion removes their files, and search includes workshop.",
+      "tests": [
+        "test/features/meters/custom_activity_test.dart",
+        "test/features/meters/vehicle_documents_test.dart",
+        "test/features/meters/vehicle_entry_screen_test.dart",
+        "test/features/meters/multiple_photos_test.dart"
+      ]
+    },
+    "lib/features/meters/domain/meter_repositories.dart": {
+      "sourceSha256": "88ca857a15809c5b3d9ebf29819816ffffd160fa3f67a31319970b03849dda12",
+      "localSha256": "5971a55a18ef93a87684612502186ab6e906dcc9d3a33045f811ee14452f1e04",
+      "reason": "Add a stream of reusable activity suggestions from saved plant entries.",
+      "tests": [
+        "test/features/meters/custom_activity_test.dart"
+      ]
+    }
+  }
+}

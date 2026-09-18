@@ -1,0 +1,1141 @@
+import 'dart:async';
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:fahrzeugakte/features/evidence/presentation/evidence_list_providers.dart';
+import 'package:fahrzeugakte/app/app.dart';
+import 'package:fahrzeugakte/app/app_providers.dart';
+import 'package:fahrzeugakte/core/files/meter_photo_repository.dart';
+import 'package:fahrzeugakte/core/ocr/meter_ocr_repository.dart';
+import 'package:fahrzeugakte/features/evidence/application/evidence_report_service.dart';
+import 'package:fahrzeugakte/features/evidence/domain/evidence_export.dart';
+import 'package:fahrzeugakte/features/meters/domain/meter.dart';
+import 'package:fahrzeugakte/features/meters/domain/meter_reading.dart';
+import 'package:fahrzeugakte/features/meters/domain/reading_value.dart';
+
+import '../../support/fakes.dart';
+
+void main() {
+  testWidgets('capture flow clearly exposes photo, unit, time and keyboard UX', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(430, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final meter = Meter(
+      id: 'meter_heat',
+      label: 'Wärme Keller',
+      type: MeterType.heat,
+      unit: 'GJ',
+      createdAt: DateTime.utc(2026, 9, 2),
+      updatedAt: DateTime.utc(2026, 9, 2),
+    );
+    final meters = MemoryMeterRepository()..items[meter.id] = meter;
+    final readings = MemoryReadingRepository();
+    final photos = _FixedPhotoRepository();
+    final reminders = NoopMeterReminderRepository();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          meterRepositoryProvider.overrideWithValue(meters),
+          meterReadingRepositoryProvider.overrideWithValue(readings),
+          evidenceExportRepositoryProvider.overrideWithValue(
+            MemoryEvidenceExportRepository(),
+          ),
+          meterPhotoCaptureRepositoryProvider.overrideWithValue(photos),
+          meterOcrRepositoryProvider.overrideWithValue(
+            const _FixedOcrRepository(),
+          ),
+          meterReminderRepositoryProvider.overrideWithValue(reminders),
+        ],
+        child: const MeterReadingLogApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Wärme Keller'));
+    await tester.pumpAndSettle();
+    final emptyHistoryAction = find.byKey(
+      const ValueKey('empty-readings-action'),
+    );
+    expect(emptyHistoryAction, findsOneWidget);
+    expect(find.text('Ersten Eintrag erfassen'), findsOneWidget);
+    await tester.tap(emptyHistoryAction);
+    await tester.pumpAndSettle();
+    expect(find.text('Eintrag erfassen'), findsWidgets);
+
+    expect(find.text('Fahrzeuge fotografieren'), findsNothing);
+    await tester.tap(find.text('Fotohinweise'));
+    await tester.pumpAndSettle();
+    expect(find.text('Fahrzeuge fotografieren'), findsOneWidget);
+    await tester.tap(find.byTooltip('Schließen'));
+    await tester.pumpAndSettle();
+    expect(photos.captureCount, 0);
+    expect(readings.items, isEmpty);
+
+    await tester.tap(find.text('Fahrzeug fotografieren'));
+    await tester.pumpAndSettle();
+
+    expect(await tester.binding.handlePopRoute(), isTrue);
+    await tester.pumpAndSettle();
+    expect(find.text('Eintrag verwerfen?'), findsOneWidget);
+    expect(find.text('Eintrag verwerfen'), findsOneWidget);
+    await tester.tap(find.text('Weiter bearbeiten'));
+    await tester.pumpAndSettle();
+    expect(find.text('Eintrag erfassen'), findsWidgets);
+    expect(find.byTooltip('Foto 1 bearbeiten'), findsOneWidget);
+    expect(find.text('Einheit des Eintrags'), findsOneWidget);
+    expect(find.text('GJ'), findsWidgets);
+    expect(find.text('Eigene Einheit dieses Fahrzeugs'), findsOneWidget);
+    expect(find.text('Datum & Uhrzeit ändern'), findsOneWidget);
+    expect(
+      tester.widget<ListView>(find.byType(ListView)).keyboardDismissBehavior,
+      ScrollViewKeyboardDismissBehavior.onDrag,
+    );
+
+    await tester.ensureVisible(find.byType(DropdownButtonFormField<String>));
+    await tester.tap(find.byType(DropdownButtonFormField<String>));
+    await tester.pumpAndSettle();
+    expect(find.text('Weitere Einheit …'), findsOneWidget);
+    await tester.tap(find.text('km').last);
+    await tester.pumpAndSettle();
+    expect(find.text('km – Kilometerstand'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('care-activity')),
+      -200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.ensureVisible(find.byKey(const ValueKey('care-activity')));
+    await tester.enterText(
+      find.byKey(const ValueKey('care-activity')),
+      'Kilometerstand',
+    );
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Eintrag bestätigen und speichern'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.ensureVisible(
+      find.widgetWithText(FilledButton, 'Eintrag bestätigen und speichern'),
+    );
+    await tester.pumpAndSettle();
+    final confirmButton = find.widgetWithText(
+      FilledButton,
+      'Eintrag bestätigen und speichern',
+    );
+    expect(
+      Theme.of(
+        tester.element(confirmButton),
+      ).filledButtonTheme.style?.shape?.resolve(const <WidgetState>{}),
+      isA<StadiumBorder>(),
+    );
+    await tester.tap(find.text('Eintrag bestätigen und speichern'));
+    for (var attempt = 0; attempt < 30 && readings.items.isEmpty; attempt++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    for (
+      var attempt = 0;
+      attempt < 30 && reminders.acknowledgedMeterIds.isEmpty;
+      attempt++
+    ) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+
+    expect(meters.items[meter.id]!.unit, 'km');
+    expect(readings.items.values.single.meter.unit, 'km');
+    expect(reminders.acknowledgedMeterIds, [meter.id]);
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(OutlinedButton, 'Korrigieren'), findsOneWidget);
+    expect(
+      find.widgetWithText(OutlinedButton, 'Eintrag löschen'),
+      findsOneWidget,
+    );
+    expect(find.byType(PopupMenuButton<String>), findsNothing);
+
+    await tester.tap(find.text('Korrigieren'));
+    await tester.pumpAndSettle();
+    expect(find.text('Aktuelle Fotos (1)'), findsOneWidget);
+    expect(find.text('Weiteres Foto aufnehmen'), findsOneWidget);
+    expect(
+      find.text(
+        'Nach dem Speichern findest du diese Änderung unter „Korrekturverlauf“. Dort siehst du die geänderten Angaben mit „Vorher“ und „Neu“.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.textContaining('deinen Grund'), findsNothing);
+
+    final menu = find.byTooltip('Foto 1 bearbeiten');
+    await tester.ensureVisible(menu);
+    await tester.tap(menu);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Foto ersetzen'));
+    await tester.pumpAndSettle();
+    expect(find.text('Neu fotografieren'), findsOneWidget);
+    expect(find.text('Aus Galerie wählen'), findsOneWidget);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(photos.captureCount, 1);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'lower new reading needs no reason and does not load full history',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(430, 1600));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final meter = Meter(
+        id: 'meter_lower_capture',
+        label: 'Strom niedriger',
+        type: MeterType.electricity,
+        unit: 'kWh',
+        createdAt: DateTime.utc(2026, 9, 1),
+        updatedAt: DateTime.utc(2026, 9, 1),
+      );
+      final meters = MemoryMeterRepository()..items[meter.id] = meter;
+      final readings = _CountingHistoryReadingRepository();
+      readings.items['previous_high'] = MeterReading(
+        id: 'previous_high',
+        meterId: meter.id,
+        meter: MeterSnapshot.fromMeter(meter),
+        value: ReadingValue.tryParse('900,0')!,
+        capturedAt: DateTime.utc(2026, 9, 8, 10),
+        timezoneOffsetMinutes: 120,
+        storedAt: DateTime.utc(2026, 9, 8, 10),
+        updatedAt: DateTime.utc(2026, 9, 8, 10),
+        source: ReadingSource.camera,
+        photoPath: '/tmp/previous-high.jpg',
+        photoSha256: 'a' * 64,
+        ocrRawText: '900,0',
+        ocrCandidate: '900,0',
+        manifestSha256: 'b' * 64,
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            meterRepositoryProvider.overrideWithValue(meters),
+            meterReadingRepositoryProvider.overrideWithValue(readings),
+            evidenceExportRepositoryProvider.overrideWithValue(
+              MemoryEvidenceExportRepository(),
+            ),
+            meterPhotoCaptureRepositoryProvider.overrideWithValue(
+              _FixedPhotoRepository(),
+            ),
+            meterOcrRepositoryProvider.overrideWithValue(
+              const _FixedOcrRepository(),
+            ),
+            meterReminderRepositoryProvider.overrideWithValue(
+              NoopMeterReminderRepository(),
+            ),
+          ],
+          child: const MeterReadingLogApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Strom niedriger'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Eintrag erfassen'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Fahrzeug fotografieren'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Grund für niedrigeren'), findsNothing);
+      expect(find.textContaining('niedrigeren Stand'), findsNothing);
+      expect(find.textContaining('Vorheriger Stand'), findsNothing);
+      expect(readings.watchForMeterCalls, 0);
+
+      await tester.enterText(
+        find.byKey(const ValueKey('care-activity')),
+        'Wartung',
+      );
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
+      final save = find.text('Eintrag bestätigen und speichern');
+      await tester.ensureVisible(save);
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+
+      final created = readings.items.values.singleWhere(
+        (reading) => reading.id != 'previous_high',
+      );
+      expect(created.hasMeasurement, isFalse);
+      expect(created.summary, 'Wartung');
+      expect(created.lowerReadingReason, isNull);
+      expect(readings.watchForMeterCalls, 0);
+    },
+  );
+
+  testWidgets(
+    'lower correction needs no reason and preserves a historical reason',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(430, 2200));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final meter = Meter(
+        id: 'meter_lower_edit',
+        label: 'Gas niedriger',
+        type: MeterType.gas,
+        unit: 'm³',
+        createdAt: DateTime.utc(2026, 9, 1),
+        updatedAt: DateTime.utc(2026, 9, 1),
+      );
+      final meters = MemoryMeterRepository()..items[meter.id] = meter;
+      final readings = _CountingHistoryReadingRepository();
+      readings.items['earlier_high'] = MeterReading(
+        id: 'earlier_high',
+        meterId: meter.id,
+        meter: MeterSnapshot.fromMeter(meter),
+        value: ReadingValue.tryParse('900,0')!,
+        capturedAt: DateTime.utc(2026, 9, 1, 10),
+        timezoneOffsetMinutes: 120,
+        storedAt: DateTime.utc(2026, 9, 1, 10),
+        updatedAt: DateTime.utc(2026, 9, 1, 10),
+        source: ReadingSource.camera,
+        photoPath: '/tmp/earlier-high.jpg',
+        photoSha256: 'a' * 64,
+        ocrRawText: '900,0',
+        ocrCandidate: '900,0',
+        manifestSha256: 'b' * 64,
+      );
+      readings.items['legacy_lower'] = MeterReading(
+        id: 'legacy_lower',
+        meterId: meter.id,
+        meter: MeterSnapshot.fromMeter(meter),
+        value: ReadingValue.tryParse('500,0')!,
+        capturedAt: DateTime.utc(2026, 9, 2, 10),
+        timezoneOffsetMinutes: 120,
+        storedAt: DateTime.utc(2026, 9, 2, 10),
+        updatedAt: DateTime.utc(2026, 9, 2, 10),
+        source: ReadingSource.camera,
+        photoPath: '/tmp/legacy-lower.jpg',
+        photoSha256: 'c' * 64,
+        ocrRawText: '500,0',
+        ocrCandidate: '500,0',
+        lowerReadingReason: LowerReadingReason.meterReplacement,
+        manifestSha256: 'd' * 64,
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            meterRepositoryProvider.overrideWithValue(meters),
+            meterReadingRepositoryProvider.overrideWithValue(readings),
+            evidenceExportRepositoryProvider.overrideWithValue(
+              MemoryEvidenceExportRepository(),
+            ),
+            meterPhotoCaptureRepositoryProvider.overrideWithValue(
+              _FixedPhotoRepository(),
+            ),
+            meterOcrRepositoryProvider.overrideWithValue(
+              const _FixedOcrRepository(),
+            ),
+            meterReminderRepositoryProvider.overrideWithValue(
+              NoopMeterReminderRepository(),
+            ),
+          ],
+          child: const MeterReadingLogApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Gas niedriger'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('reading-card-legacy_lower')));
+      await tester.pumpAndSettle();
+      expect(find.text('Geringerer Kilometerstand'), findsOneWidget);
+      expect(find.text('Neu abgelesen'), findsOneWidget);
+
+      await tester.tap(find.text('Korrigieren'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Kilometerstand (optional)'),
+        '400',
+      );
+      expect(find.textContaining('Grund für niedrigeren'), findsNothing);
+      expect(find.textContaining('niedrigeren Stand'), findsNothing);
+      expect(readings.watchForMeterCalls, 0);
+
+      final save = find.text('Korrektur protokollieren');
+      await tester.ensureVisible(save);
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+
+      expect(
+        readings.items['legacy_lower']?.lowerReadingReason,
+        LowerReadingReason.meterReplacement,
+      );
+      expect(readings.items['legacy_lower']?.value.displayText, '400');
+      expect(find.text('Geringerer Kilometerstand'), findsOneWidget);
+      expect(find.text('Neu abgelesen'), findsOneWidget);
+      expect(readings.watchForMeterCalls, 0);
+    },
+  );
+
+  testWidgets(
+    'meter previews ten readings and opens searchable fixed history pages',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(430, 1200));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final meter = Meter(
+        id: 'meter_long_history',
+        label: 'Strom Langzeit',
+        type: MeterType.electricity,
+        unit: 'kWh',
+        createdAt: DateTime.utc(2026, 7, 1),
+        updatedAt: DateTime.utc(2026, 7, 1),
+      );
+      final meters = MemoryMeterRepository()..items[meter.id] = meter;
+      final readings = MemoryReadingRepository();
+      final base = DateTime.utc(2026, 7, 1, 12);
+      for (var index = 0; index < 45; index++) {
+        final capturedAt = base.add(Duration(days: index));
+        readings.items['long_reading_$index'] = MeterReading(
+          id: 'long_reading_$index',
+          meterId: meter.id,
+          meter: MeterSnapshot.fromMeter(meter),
+          value: ReadingValue.tryParse('${1000 + index},0')!,
+          capturedAt: capturedAt,
+          timezoneOffsetMinutes: 120,
+          storedAt: capturedAt,
+          updatedAt: capturedAt,
+          source: ReadingSource.camera,
+          photoPath: '/tmp/long_reading_$index.jpg',
+          photoSha256: 'a' * 64,
+          ocrRawText: '${1000 + index},0',
+          ocrCandidate: '${1000 + index},0',
+          note: index == 3 ? 'Spezialfund im Heizraum' : '',
+          manifestSha256: 'b' * 64,
+        );
+      }
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            meterRepositoryProvider.overrideWithValue(meters),
+            meterReadingRepositoryProvider.overrideWithValue(readings),
+            evidenceExportRepositoryProvider.overrideWithValue(
+              MemoryEvidenceExportRepository(),
+            ),
+          ],
+          child: const MeterReadingLogApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Strom Langzeit'));
+      await tester.pumpAndSettle();
+
+      expect(readings.lastPageLimit, 10);
+      expect(readings.lastPageQuery, isEmpty);
+      final historyPdfAction = find.text('Fahrzeugprotokoll · Fahrzeugverlauf');
+      final historyTitle = find.text('Fahrzeugverlauf');
+      expect(historyPdfAction, findsOneWidget);
+      expect(
+        tester.getTopLeft(historyPdfAction).dy,
+        lessThan(tester.getTopLeft(historyTitle).dy),
+      );
+      expect(find.text('Gespeicherte Fahrzeugprotokolle'), findsNothing);
+      expect(find.text('10 von 45 Einträgen'), findsOneWidget);
+      expect(find.byKey(const ValueKey('history-search-field')), findsNothing);
+      final openHistory = find.byKey(const ValueKey('open-meter-history'));
+      await tester.scrollUntilVisible(
+        openHistory,
+        400,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.tap(openHistory);
+      await tester.pumpAndSettle();
+      expect(readings.lastPageLimit, 10);
+      expect(readings.lastPageOffset, 0);
+      expect(find.text('1–10 von 45 Einträgen'), findsOneWidget);
+      final search = find.byKey(const ValueKey('history-search-field'));
+      expect(search, findsOneWidget);
+
+      await tester.enterText(search, 'SPEZIALFUND');
+      await tester.pump(const Duration(milliseconds: 249));
+      expect(readings.lastPageQuery, isEmpty);
+      await tester.pump(const Duration(milliseconds: 2));
+      await tester.pumpAndSettle();
+
+      expect(readings.lastPageLimit, 10);
+      expect(readings.lastPageQuery, 'SPEZIALFUND');
+      expect(find.text('1 Treffer'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('reading-card-long_reading_3')),
+        findsOneWidget,
+      );
+      expect(find.text('Spezialfund im Heizraum'), findsOneWidget);
+      expect(find.textContaining('Fortschritt'), findsNothing);
+
+      await tester.tap(find.byTooltip('Suche löschen'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('history-next-page')));
+      await tester.pumpAndSettle();
+
+      expect(readings.lastPageLimit, 10);
+      expect(readings.lastPageOffset, 10);
+      expect(readings.lastPageQuery, isEmpty);
+      expect(find.text('11–20 von 45 Einträgen'), findsOneWidget);
+      expect(find.text('Seite 2 von 5'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('reading-card-long_reading_44')),
+        findsNothing,
+      );
+      for (var page = 2; page < 5; page++) {
+        await tester.tap(find.byKey(const ValueKey('history-next-page')));
+        await tester.pumpAndSettle();
+      }
+      expect(readings.lastPageOffset, 40);
+      expect(find.text('41–45 von 45 Einträgen'), findsOneWidget);
+      expect(
+        tester
+            .widget<OutlinedButton>(
+              find.byKey(const ValueKey('history-next-page')),
+            )
+            .onPressed,
+        isNull,
+      );
+      await tester.tap(find.byKey(const ValueKey('history-previous-page')));
+      await tester.pumpAndSettle();
+      expect(readings.lastPageOffset, 30);
+      await tester.enterText(search, 'SPEZIALFUND');
+      await tester.pump(const Duration(milliseconds: 251));
+      await tester.pumpAndSettle();
+      expect(readings.lastPageOffset, 0);
+      expect(find.text('1 Treffer'), findsOneWidget);
+    },
+  );
+
+  testWidgets('history shows the explicit page progress equation', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(430, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final meter = Meter(
+      id: 'meter_page_progress',
+      label: 'Der Alchimist',
+      type: MeterType.electricity,
+      unit: 'km',
+      createdAt: DateTime.utc(2026, 9, 1),
+      updatedAt: DateTime.utc(2026, 9, 2),
+    );
+    final meters = MemoryMeterRepository()..items[meter.id] = meter;
+    final readings = MemoryReadingRepository();
+
+    MeterReading reading(String id, String value, DateTime capturedAt) {
+      return MeterReading(
+        id: id,
+        meterId: meter.id,
+        meter: MeterSnapshot.fromMeter(meter),
+        value: ReadingValue.tryParse(value)!,
+        capturedAt: capturedAt,
+        timezoneOffsetMinutes: 120,
+        storedAt: capturedAt,
+        updatedAt: capturedAt,
+        source: ReadingSource.camera,
+        photoPath: '/tmp/$id.jpg',
+        photoSha256: 'a' * 64,
+        ocrRawText: value,
+        ocrCandidate: value,
+        manifestSha256: 'b' * 64,
+      );
+    }
+
+    readings.items['page_85'] = reading(
+      'page_85',
+      '85',
+      DateTime.utc(2026, 9, 1, 10),
+    );
+    readings.items['page_130'] = reading(
+      'page_130',
+      '130',
+      DateTime.utc(2026, 9, 2, 10),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          meterRepositoryProvider.overrideWithValue(meters),
+          meterReadingRepositoryProvider.overrideWithValue(readings),
+          evidenceExportRepositoryProvider.overrideWithValue(
+            MemoryEvidenceExportRepository(),
+          ),
+          meterReminderRepositoryProvider.overrideWithValue(
+            NoopMeterReminderRepository(),
+          ),
+        ],
+        child: const MeterReadingLogApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Der Alchimist'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('85 → 130 = 45 km Differenz'), findsOneWidget);
+  });
+
+  testWidgets('saved history PDFs keep both creation variants available', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(430, 3000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final temp = Directory.systemTemp.createTempSync(
+      'current_history_screen_test_',
+    );
+    addTearDown(() => temp.deleteSync(recursive: true));
+    final compactPdf = File('${temp.path}/compact.pdf');
+    final photoPdf = File('${temp.path}/photos.pdf');
+    compactPdf.writeAsBytesSync(const [0x25, 0x50, 0x44, 0x46]);
+    photoPdf.writeAsBytesSync(const [0x25, 0x50, 0x44, 0x46]);
+    final meter = Meter(
+      id: 'meter_current_history',
+      label: 'Gas Keller',
+      type: MeterType.gas,
+      unit: 'm³',
+      createdAt: DateTime.utc(2026, 9, 1),
+      updatedAt: DateTime.utc(2026, 9, 1),
+    );
+    final meters = MemoryMeterRepository()..items[meter.id] = meter;
+    final readings = MemoryReadingRepository();
+    final reading = MeterReading(
+      id: 'reading_current_history',
+      meterId: meter.id,
+      meter: MeterSnapshot.fromMeter(meter),
+      value: ReadingValue.tryParse('84,2')!,
+      capturedAt: DateTime.utc(2026, 9, 2, 10),
+      timezoneOffsetMinutes: 120,
+      storedAt: DateTime.utc(2026, 9, 2, 10),
+      updatedAt: DateTime.utc(2026, 9, 2, 10),
+      source: ReadingSource.camera,
+      photoPath: '/tmp/current-history-photo.jpg',
+      photoSha256: 'a' * 64,
+      ocrRawText: '84,2',
+      ocrCandidate: '84,2',
+      manifestSha256: 'b' * 64,
+    );
+    readings.items[reading.id] = reading;
+    final exports = MemoryEvidenceExportRepository();
+    exports.items['history_compact'] = EvidenceExportRecord(
+      id: 'history_compact',
+      meterId: meter.id,
+      kind: EvidenceExportKind.meterHistory,
+      readingIds: [reading.id],
+      createdAt: DateTime.utc(2026, 9, 5, 10),
+      fileName: 'compact.pdf',
+      filePath: compactPdf.path,
+      pdfSha256: 'c' * 64,
+      manifestSha256: 'compact-history-manifest',
+      photoMode: EvidencePhotoMode.withoutPhotos,
+    );
+    exports.items['history_photos'] = EvidenceExportRecord(
+      id: 'history_photos',
+      meterId: meter.id,
+      kind: EvidenceExportKind.meterHistory,
+      readingIds: [reading.id],
+      createdAt: DateTime.utc(2026, 9, 5, 10, 1),
+      fileName: 'photos.pdf',
+      filePath: photoPdf.path,
+      pdfSha256: 'd' * 64,
+      manifestSha256: 'photo-history-manifest',
+      photoMode: EvidencePhotoMode.currentPhotos,
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          meterRepositoryProvider.overrideWithValue(meters),
+          meterReadingRepositoryProvider.overrideWithValue(readings),
+          evidenceExportRepositoryProvider.overrideWithValue(exports),
+          evidenceFileAvailableProvider.overrideWith(
+            (ref, path) async => File(path).existsSync(),
+          ),
+          evidenceReportServiceProvider.overrideWithValue(
+            _SynchronousDeleteEvidenceReportService(exports),
+          ),
+        ],
+        child: const MeterReadingLogApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Gas Keller'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Fahrzeugprotokoll für den Fahrzeugverlauf erstellen'),
+      250,
+      scrollable: find.byType(Scrollable).last,
+    );
+
+    final compactCard = find.byKey(
+      const ValueKey('evidence-export-history_compact'),
+    );
+    final photoCard = find.byKey(
+      const ValueKey('evidence-export-history_photos'),
+    );
+    expect(find.text('Gespeicherte Fahrzeugprotokolle'), findsOneWidget);
+    expect(find.text('2 Fahrzeugprotokolle'), findsOneWidget);
+    expect(compactCard, findsNothing);
+    expect(photoCard, findsNothing);
+    await tester.tap(
+      find.byKey(const ValueKey('saved-history-pdfs-expansion')),
+    );
+    await tester.pumpAndSettle();
+    expect(compactCard, findsOneWidget);
+    expect(photoCard, findsOneWidget);
+    expect(
+      find.descendant(
+        of: compactCard,
+        matching: find.text('Aktueller Fahrzeugverlaufsprotokoll'),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.descendant(
+        of: photoCard,
+        matching: find.text('Aktueller Fahrzeugverlaufsprotokoll'),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.text('Beide aktuellen Varianten bereits erstellt'),
+      findsNothing,
+    );
+    final createButton = tester.widget<FilledButton>(
+      find.widgetWithText(
+        FilledButton,
+        'Fahrzeugprotokoll für den Fahrzeugverlauf erstellen',
+      ),
+    );
+    expect(createButton.onPressed, isNotNull);
+
+    await tester.tap(
+      find.text('Fahrzeugprotokoll für den Fahrzeugverlauf erstellen'),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<ListTile>(
+            find.byKey(const ValueKey('evidence-photo-mode-withoutPhotos')),
+          )
+          .enabled,
+      isTrue,
+    );
+    expect(
+      tester
+          .widget<ListTile>(
+            find.byKey(const ValueKey('evidence-photo-mode-currentPhotos')),
+          )
+          .enabled,
+      isTrue,
+    );
+    await tester.tapAt(const Offset(8, 8));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('saved history PDFs remain accessible without readings', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(430, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final temp = Directory.systemTemp.createTempSync(
+      'history_without_readings_test_',
+    );
+    addTearDown(() => temp.deleteSync(recursive: true));
+    final historyPdf = File('${temp.path}/history.pdf');
+    historyPdf.writeAsBytesSync(const [0x25, 0x50, 0x44, 0x46]);
+    final meter = Meter(
+      id: 'meter_history_without_readings',
+      label: 'Alter GasBuch',
+      type: MeterType.gas,
+      unit: 'm³',
+      createdAt: DateTime.utc(2026, 9, 1),
+      updatedAt: DateTime.utc(2026, 9, 1),
+    );
+    final meters = MemoryMeterRepository()..items[meter.id] = meter;
+    final exports = MemoryEvidenceExportRepository();
+    exports.items['orphaned_history_export'] = EvidenceExportRecord(
+      id: 'orphaned_history_export',
+      meterId: meter.id,
+      kind: EvidenceExportKind.meterHistory,
+      readingIds: const ['removed_reading'],
+      createdAt: DateTime.utc(2026, 9, 5, 8, 30),
+      fileName: 'alter_verlauf.pdf',
+      filePath: historyPdf.path,
+      pdfSha256: 'c' * 64,
+      manifestSha256: 'd' * 64,
+      photoMode: EvidencePhotoMode.withoutPhotos,
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          meterRepositoryProvider.overrideWithValue(meters),
+          meterReadingRepositoryProvider.overrideWithValue(
+            MemoryReadingRepository(),
+          ),
+          evidenceExportRepositoryProvider.overrideWithValue(exports),
+          evidenceFileAvailableProvider.overrideWith(
+            (ref, path) async => File(path).existsSync(),
+          ),
+        ],
+        child: const MeterReadingLogApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Alter GasBuch'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Fahrzeugprotokoll für den Fahrzeugverlauf erstellen'),
+      findsNothing,
+    );
+    expect(find.text('Gespeicherte Fahrzeugprotokolle'), findsOneWidget);
+    expect(find.text('1 Fahrzeugprotokoll'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('evidence-export-orphaned_history_export')),
+      findsNothing,
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('saved-history-pdfs-expansion')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('evidence-export-orphaned_history_export')),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Noch kein Eintrag.'), findsOneWidget);
+  });
+
+  testWidgets('history PDFs precede readings and show progress', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(430, 3000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final temp = Directory.systemTemp.createTempSync('history_screen_test_');
+    addTearDown(() => temp.deleteSync(recursive: true));
+    final historyPdf = File('${temp.path}/history.pdf');
+    historyPdf.writeAsBytesSync(const [0x25, 0x50, 0x44, 0x46]);
+    final meter = Meter(
+      id: 'meter_pdf',
+      label: 'Wasser Bad',
+      type: MeterType.water,
+      unit: 'm³',
+      createdAt: DateTime.utc(2026, 9, 1),
+      updatedAt: DateTime.utc(2026, 9, 1),
+    );
+    final meters = MemoryMeterRepository()..items[meter.id] = meter;
+    final readings = _PendingRevisionRepository();
+    final exports = MemoryEvidenceExportRepository();
+    readings.items['reading_pdf'] = MeterReading(
+      id: 'reading_pdf',
+      meterId: meter.id,
+      meter: MeterSnapshot.fromMeter(meter),
+      value: ReadingValue.tryParse('42,1')!,
+      capturedAt: DateTime.utc(2026, 9, 2, 10),
+      timezoneOffsetMinutes: 120,
+      storedAt: DateTime.utc(2026, 9, 2, 10),
+      updatedAt: DateTime.utc(2026, 9, 2, 10),
+      source: ReadingSource.camera,
+      photoPath: '/tmp/photo.jpg',
+      photoSha256: 'a' * 64,
+      ocrRawText: '42,1',
+      ocrCandidate: '42,1',
+      manifestSha256: 'b' * 64,
+    );
+    exports.items['history_export'] = EvidenceExportRecord(
+      id: 'history_export',
+      meterId: meter.id,
+      kind: EvidenceExportKind.meterHistory,
+      readingIds: const ['reading_pdf'],
+      createdAt: DateTime.utc(2026, 9, 5, 8, 30),
+      fileName: 'fahrzeugverlauf_der_alchimist_20260905_083000.pdf',
+      filePath: historyPdf.path,
+      pdfSha256: 'c' * 64,
+      manifestSha256: 'd' * 64,
+      photoMode: EvidencePhotoMode.withoutPhotos,
+    );
+    exports.items['single_export'] = EvidenceExportRecord(
+      id: 'single_export',
+      meterId: meter.id,
+      kind: EvidenceExportKind.singleReading,
+      readingIds: const ['reading_pdf'],
+      createdAt: DateTime.utc(2026, 9, 5, 8),
+      fileName: 'fahrzeugeintrag_der_alchimist_20260905_080000.pdf',
+      filePath: '/tmp/single.pdf',
+      pdfSha256: 'e' * 64,
+      manifestSha256: 'f' * 64,
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          meterRepositoryProvider.overrideWithValue(meters),
+          meterReadingRepositoryProvider.overrideWithValue(readings),
+          evidenceExportRepositoryProvider.overrideWithValue(exports),
+          evidenceFileAvailableProvider.overrideWith(
+            (ref, path) async => File(path).existsSync(),
+          ),
+          evidenceReportServiceProvider.overrideWithValue(
+            _SynchronousDeleteEvidenceReportService(exports),
+          ),
+          meterPhotoCaptureRepositoryProvider.overrideWithValue(
+            _FixedPhotoRepository(),
+          ),
+          meterOcrRepositoryProvider.overrideWithValue(
+            const _FixedOcrRepository(),
+          ),
+          meterReminderRepositoryProvider.overrideWithValue(
+            NoopMeterReminderRepository(),
+          ),
+        ],
+        child: const MeterReadingLogApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Wasser Bad'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Fahrzeugprotokoll für den Fahrzeugverlauf erstellen'),
+      250,
+      scrollable: find.byType(Scrollable).last,
+    );
+    expect(find.text('Fahrzeugprotokoll · Fahrzeugverlauf'), findsOneWidget);
+    expect(
+      find.textContaining('kompakt ohne Anhänge oder mit aktuellen'),
+      findsOneWidget,
+    );
+    final readingCard = find.byKey(const ValueKey('reading-card-reading_pdf'));
+    expect(readingCard, findsOneWidget);
+    expect(
+      find.descendant(of: readingCard, matching: find.text('Kilometerstand')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: readingCard, matching: find.text('42,1 m³')),
+      findsOneWidget,
+    );
+    final dateBadge = find.byKey(
+      const ValueKey('reading-date-badge-reading_pdf'),
+    );
+    expect(dateBadge, findsOneWidget);
+    expect(
+      find.descendant(
+        of: dateBadge,
+        matching: find.byIcon(Icons.calendar_month_outlined),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: dateBadge,
+        matching: find.textContaining('Dokumentiert ·'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      tester.getTopLeft(dateBadge).dy,
+      lessThan(
+        tester
+            .getTopLeft(
+              find.descendant(
+                of: readingCard,
+                matching: find.text('Kilometerstand'),
+              ),
+            )
+            .dy,
+      ),
+    );
+    expect(
+      find.descendant(of: readingCard, matching: find.text('Dokumentiert am')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('reading-thumbnail-reading_pdf')),
+      findsOneWidget,
+    );
+    final savedEvidenceTitle = find.text('Gespeicherte Fahrzeugprotokolle');
+    final historyActionTitle = find.text('Fahrzeugprotokoll · Fahrzeugverlauf');
+    final historySectionTitle = find.text('Fahrzeugverlauf');
+    final historyExportCard = find.byKey(
+      const ValueKey('evidence-export-history_export'),
+    );
+    expect(savedEvidenceTitle, findsOneWidget);
+    expect(find.text('1 Fahrzeugprotokoll'), findsOneWidget);
+    expect(historyExportCard, findsNothing);
+    expect(
+      tester.getTopLeft(historyActionTitle.first).dy,
+      lessThan(tester.getTopLeft(savedEvidenceTitle).dy),
+    );
+    expect(
+      tester.getTopLeft(savedEvidenceTitle).dy,
+      lessThan(tester.getTopLeft(historySectionTitle).dy),
+    );
+    expect(
+      tester.getTopLeft(historySectionTitle).dy,
+      lessThan(tester.getTopLeft(readingCard).dy),
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('saved-history-pdfs-expansion')),
+    );
+    await tester.pumpAndSettle();
+    expect(historyExportCard, findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('current-evidence-badge-history_export')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('evidence-export-single_export')),
+      findsNothing,
+    );
+    expect(find.text('Fahrzeugprotokoll · Fahrzeugverlauf'), findsWidgets);
+    expect(find.textContaining('1 Eintrag enthalten'), findsOneWidget);
+    expect(find.text('Einzelnachweis'), findsNothing);
+    expect(find.text('Kilometerstand: 42,1 m³'), findsNothing);
+    expect(find.text('Lokal gespeichert'), findsOneWidget);
+    expect(
+      find.text('fahrzeugverlauf_der_alchimist_20260905_083000.pdf'),
+      findsNothing,
+    );
+    expect(find.textContaining('cccccccc'), findsNothing);
+    expect(
+      tester.getTopLeft(historyActionTitle.first).dy,
+      lessThan(tester.getTopLeft(historyExportCard).dy),
+    );
+    final deleteHistory = find.byKey(
+      const ValueKey('delete-evidence-history_export'),
+    );
+    expect(deleteHistory, findsOneWidget);
+    expect(
+      tester.widget<IconButton>(deleteHistory).tooltip,
+      'Fahrzeugprotokoll löschen',
+    );
+    await tester.tap(deleteHistory);
+    await tester.pumpAndSettle();
+    expect(find.text('Fahrzeugprotokoll löschen?'), findsOneWidget);
+    expect(
+      find.textContaining('außerhalb der App gespeicherte Kopien'),
+      findsOneWidget,
+    );
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Abbrechen'));
+    await tester.pumpAndSettle();
+    expect(exports.items, contains('history_export'));
+
+    await tester.tap(deleteHistory);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Löschen'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(exports.items, isNot(contains('history_export')));
+    expect(
+      find.byKey(const ValueKey('evidence-export-history_export')),
+      findsNothing,
+    );
+    expect(find.text('Gespeicherte Fahrzeugprotokolle'), findsNothing);
+    expect(find.text('Fahrzeugprotokoll gelöscht.'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Fahrzeugprotokoll für den Fahrzeugverlauf erstellen'),
+      -250,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.tap(
+      find.text('Fahrzeugprotokoll für den Fahrzeugverlauf erstellen'),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('PDF-Inhalt wählen'), findsOneWidget);
+    expect(find.text('Kompakt ohne Anhänge'), findsOneWidget);
+    expect(find.text('Mit Fotos und PDFs'), findsOneWidget);
+    await tester.tap(find.text('Kompakt ohne Anhänge'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('Fahrzeugprotokoll wird erstellt'), findsOneWidget);
+    expect(
+      find.text(
+        'Einträge und Notizen werden für die kompakte PDF zusammengestellt.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('pdf-export-progress')), findsOneWidget);
+    expect(
+      find.text('Fahrzeugprotokoll für den Fahrzeugverlauf erstellen'),
+      findsOneWidget,
+    );
+    expect(readings.loadForMeterCalls, 1);
+  });
+}
+
+class _PendingRevisionRepository extends MemoryReadingRepository {
+  final _pending = Completer<List<ReadingRevision>>();
+
+  @override
+  Future<List<ReadingRevision>> loadRevisions(String readingId) {
+    return _pending.future;
+  }
+}
+
+class _CountingHistoryReadingRepository extends MemoryReadingRepository {
+  int watchForMeterCalls = 0;
+
+  @override
+  Stream<List<MeterReading>> watchForMeter(String meterId) {
+    watchForMeterCalls++;
+    return super.watchForMeter(meterId);
+  }
+}
+
+class _SynchronousDeleteEvidenceReportService extends EvidenceReportService {
+  _SynchronousDeleteEvidenceReportService(
+    MemoryEvidenceExportRepository repository,
+  ) : super(exports: repository);
+
+  @override
+  Future<void> delete(EvidenceExportRecord record) async {
+    await exports.delete(record.id);
+  }
+}
+
+class _FixedPhotoRepository implements MeterPhotoCaptureRepository {
+  int captureCount = 0;
+
+  final photo = StoredMeterPhoto(
+    path: '/synthetic/meter.jpg',
+    sha256: 'a' * 64,
+    source: ReadingSource.camera,
+    capturedAt: DateTime(2026, 9, 2, 10, 30),
+  );
+
+  @override
+  Future<StoredMeterPhoto?> capture(ReadingSource source) async {
+    captureCount++;
+    return photo;
+  }
+
+  @override
+  Future<void> delete(String path) async {}
+
+  @override
+  Future<StoredMeterPhoto?> recoverLostCapture() async => null;
+}
+
+class _FixedOcrRepository implements MeterOcrRepository {
+  const _FixedOcrRepository();
+
+  @override
+  Future<MeterOcrResult> recognize(String imagePath) async {
+    final value = ReadingValue.tryParse('123')!;
+    return MeterOcrResult(
+      rawText: '123 GJ',
+      candidates: [
+        OcrReadingCandidate(
+          rawText: '123',
+          value: value,
+          confidence: 0.95,
+          score: 0.95,
+        ),
+      ],
+      confidence: 0.95,
+    );
+  }
+}

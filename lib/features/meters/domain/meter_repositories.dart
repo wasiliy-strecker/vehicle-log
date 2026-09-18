@@ -1,0 +1,55 @@
+import '../../evidence/domain/evidence_export.dart';
+import '../../evidence/domain/evidence_export_page.dart';
+import 'meter.dart';
+import 'meter_dashboard_item.dart';
+import 'meter_reading.dart';
+import 'meter_reading_page.dart';
+
+abstract interface class MeterRepository {
+  Stream<List<Meter>> watchAll();
+  Future<List<Meter>> loadAll();
+  Future<Meter?> findById(String id);
+  Future<void> save(Meter meter);
+  Future<void> delete(String id);
+}
+
+abstract interface class MeterReadingRepository {
+  Stream<List<String>> watchActivitySuggestions();
+  Stream<List<MeterReading>> watchAll();
+  Stream<List<MeterReading>> watchForMeter(String meterId);
+  Stream<MeterReadingPage> watchPageForMeter(
+    String meterId, {
+    required int limit,
+    int offset = 0,
+    String query = '',
+  });
+  Future<List<MeterReading>> loadAll();
+  Future<List<MeterReading>> loadForMeter(String meterId);
+  Future<MeterReading?> findById(String id);
+  Future<void> save(MeterReading reading);
+  Future<void> updateWithRevision(
+    MeterReading reading,
+    ReadingRevision revision,
+  );
+  Future<List<ReadingRevision>> loadRevisions(String readingId);
+  Future<void> saveRevision(ReadingRevision revision);
+  Future<void> delete(String id);
+}
+
+abstract interface class MeterDashboardRepository {
+  Stream<List<MeterDashboardItem>> watchAll();
+}
+
+abstract interface class EvidenceExportRepository {
+  Stream<List<EvidenceExportRecord>> watchForMeter(String meterId);
+  Stream<EvidenceExportPage> watchPageForMeter(
+    String meterId, {
+    required EvidenceExportKind kind,
+    required int limit,
+    int offset = 0,
+  });
+  Future<List<EvidenceExportRecord>> loadAll();
+  Future<List<EvidenceExportRecord>> loadForMeter(String meterId);
+  Future<void> save(EvidenceExportRecord record);
+  Future<void> delete(String id);
+}
