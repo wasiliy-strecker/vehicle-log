@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:pdfrx/pdfrx.dart';
@@ -17,6 +19,23 @@ class ReadingDocumentEditor extends StatelessWidget {
   final ReadingPhotoSession session;
   final Map<String, dynamic> Function() fields;
   final bool enabled;
+
+  Future<void> _reorder(BuildContext context, List<String> ids) async {
+    if (!enabled || session.busy) return;
+    final byId = {
+      for (final document in session.documents) document.id: document,
+    };
+    if (ids.length != byId.length ||
+        ids.toSet().length != byId.length ||
+        ids.any((id) => !byId.containsKey(id))) {
+      return;
+    }
+    await _run(
+      context,
+      () =>
+          session.changeDocuments([for (final id in ids) byId[id]!], fields()),
+    );
+  }
 
   Future<void> _add(BuildContext context, {String? replacementId}) async {
     final scan = await showModalBottomSheet<bool>(
@@ -94,6 +113,12 @@ class ReadingDocumentEditor extends StatelessWidget {
               context,
             ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
           ),
+          if (session.documents.length > 1) ...[
+            const SizedBox(height: 6),
+            const Text(
+              'Zum Sortieren eine PDF länger gedrückt halten und verschieben.',
+            ),
+          ],
           const SizedBox(height: 10),
           if (session.documents.isEmpty)
             const Text('Keine aktuellen PDFs')
@@ -101,6 +126,8 @@ class ReadingDocumentEditor extends StatelessWidget {
             ReadingDocuments(
               documents: session.documents,
               embedded: true,
+              enabled: enabled && !session.busy,
+              onReorder: (ids) => _reorder(context, ids),
               onAction: !enabled || session.busy
                   ? null
                   : (doc, action) async {
@@ -145,19 +172,32 @@ class ReadingDocuments extends StatelessWidget {
     super.key,
     required this.documents,
     this.onAction,
+    this.onReorder,
+    this.enabled = true,
     this.embedded = false,
   });
   final List<ReadingDocument> documents;
   final void Function(ReadingDocument, String)? onAction;
+  final ValueChanged<List<String>>? onReorder;
+  final bool enabled;
   final bool embedded;
 
   @override
-  Widget build(BuildContext context) => Column(
-    children: [
-      for (final (index, document) in documents.indexed)
-        _buildDocument(context, index, document),
-    ],
-  );
+  Widget build(BuildContext context) =>
+      onReorder != null && documents.length > 1
+      ? _SortableReadingDocuments(
+          documents: documents,
+          enabled: enabled,
+          onReorder: onReorder!,
+          itemBuilder: (document, index) =>
+              _buildDocument(context, index, document),
+        )
+      : Column(
+          children: [
+            for (final (index, document) in documents.indexed)
+              _buildDocument(context, index, document),
+          ],
+        );
 
   Widget _buildDocument(
     BuildContext context,
@@ -179,6 +219,8 @@ class ReadingDocuments extends StatelessWidget {
       trailing: onAction == null
           ? null
           : PopupMenuButton<String>(
+              key: ValueKey('document-menu-${document.id}'),
+              enabled: enabled,
               tooltip: 'Dokument bearbeiten',
               onSelected: (value) => onAction!(document, value),
               itemBuilder: (_) => [
@@ -207,6 +249,143 @@ class ReadingDocuments extends StatelessWidget {
     );
     return embedded ? tile : Card(child: tile);
   }
+}
+
+class _SortableReadingDocuments extends StatefulWidget {
+  const _SortableReadingDocuments({
+    required this.documents,
+    required this.enabled,
+    required this.onReorder,
+    required this.itemBuilder,
+  });
+
+  final List<ReadingDocument> documents;
+  final bool enabled;
+  final ValueChanged<List<String>> onReorder;
+  final Widget Function(ReadingDocument, int) itemBuilder;
+
+  @override
+  State<_SortableReadingDocuments> createState() =>
+      _SortableReadingDocumentsState();
+}
+
+class _SortableReadingDocumentsState extends State<_SortableReadingDocuments> {
+  String? _draggingId;
+  Offset? _pointer;
+  Timer? _scrollTimer;
+
+  @override
+  void didUpdateWidget(covariant _SortableReadingDocuments oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.enabled) _finishDrag();
+  }
+
+  @override
+  void dispose() {
+    _scrollTimer?.cancel();
+    super.dispose();
+  }
+
+  void _finishDrag() {
+    _scrollTimer?.cancel();
+    _scrollTimer = null;
+    _pointer = null;
+    if (mounted && _draggingId != null) setState(() => _draggingId = null);
+  }
+
+  void _scrollAtEdge() {
+    if (!mounted || !widget.enabled || _pointer == null) return;
+    final scrollable = Scrollable.maybeOf(context);
+    final box = scrollable?.context.findRenderObject();
+    if (scrollable == null || box is! RenderBox || !box.hasSize) return;
+    final position = scrollable.position;
+    final local = box.globalToLocal(_pointer!);
+    const edge = 72.0;
+    final double delta;
+    if (local.dy < edge) {
+      delta = -12 * ((edge - local.dy) / edge).clamp(0, 1);
+    } else if (local.dy > box.size.height - edge) {
+      delta = 12 * ((local.dy - box.size.height + edge) / edge).clamp(0, 1);
+    } else {
+      return;
+    }
+    final next = (position.pixels + delta).clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    );
+    if (next != position.pixels) position.jumpTo(next);
+  }
+
+  void _move(String id, int target) {
+    if (!widget.enabled) return;
+    final ids = widget.documents.map((document) => document.id).toList();
+    final from = ids.indexOf(id);
+    if (from < 0 || target < 0 || target >= ids.length || from == target) {
+      return;
+    }
+    ids.insert(target, ids.removeAt(from));
+    widget.onReorder(ids);
+  }
+
+  Widget _draggable(ReadingDocument document, int index, double width) =>
+      DragTarget<String>(
+        key: ValueKey(document.id),
+        onWillAcceptWithDetails: (details) =>
+            widget.enabled &&
+            details.data == _draggingId &&
+            details.data != document.id,
+        onAcceptWithDetails: (details) => _move(details.data, index),
+        builder: (context, candidates, rejected) => AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              width: 2,
+              color: candidates.isEmpty
+                  ? Colors.transparent
+                  : Theme.of(context).colorScheme.primary,
+            ),
+          ),
+          child: LongPressDraggable<String>(
+            key: ValueKey('document-drag-${document.id}'),
+            data: document.id,
+            maxSimultaneousDrags: widget.enabled && _draggingId == null ? 1 : 0,
+            onDragStarted: () {
+              setState(() => _draggingId = document.id);
+              _scrollTimer = Timer.periodic(
+                const Duration(milliseconds: 16),
+                (_) => _scrollAtEdge(),
+              );
+            },
+            onDragUpdate: (details) => _pointer = details.globalPosition,
+            onDragEnd: (_) => _finishDrag(),
+            feedback: Material(
+              elevation: 8,
+              borderRadius: BorderRadius.circular(14),
+              clipBehavior: Clip.antiAlias,
+              child: SizedBox(
+                width: width,
+                child: widget.itemBuilder(document, index),
+              ),
+            ),
+            childWhenDragging: Opacity(
+              opacity: .3,
+              child: widget.itemBuilder(document, index),
+            ),
+            child: widget.itemBuilder(document, index),
+          ),
+        ),
+      );
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) => Column(
+      children: [
+        for (final (index, document) in widget.documents.indexed)
+          _draggable(document, index, constraints.maxWidth),
+      ],
+    ),
+  );
 }
 
 class _DocumentViewer extends StatelessWidget {

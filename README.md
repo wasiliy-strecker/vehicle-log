@@ -23,7 +23,7 @@ vergleichen. Einträge ohne Kilometerstand erhalten keine erfundene Anzeige.
 ## Fotos und PDFs
 
 Die vorhandenen Kamera-, Galerie- und manuellen Abläufe bleiben erhalten.
-„Dokument hinzufügen“ bietet PDF-Mehrfachauswahl und auf Android den
+„PDF auswählen/scannen“ bietet PDF-Mehrfachauswahl und auf Android den
 Dokumentscanner aus AI Contract Manager. Derselbe Google-ML-Kit-Scanner verwendet
 Full-Modus, maximal 20 Seiten, JPEG/PDF-Ausgabe und keinen Galerieimport.
 Seiten lassen sich im Scanner zuschneiden, drehen und bereinigen. Die fertige
@@ -34,6 +34,11 @@ Fotos und PDFs können gemeinsam zu einem Eintrag gehören. Original-PDFs werden
 unverändert im privaten App-Speicher abgelegt. Passwortgeschützte, beschädigte
 und leere PDFs werden abgewiesen. Die Dokumentliste bietet Öffnen, Teilen,
 Ersetzen, Entfernen und Sortieren. Korrekturen archivieren frühere Anhänge.
+Ab zwei aktuellen PDFs lassen sich die Zeilen im Erfassungs- und
+Korrekturformular wie Fotos länger gedrückt halten und verschieben.
+Der Sortierhinweis steht direkt unter der Überschrift. Am Bildschirmrand
+scrollt das Formular beim Ziehen automatisch. Die Menüaktionen „Nach vorne“
+und „Nach hinten“ bleiben ebenfalls verfügbar.
 Beim Verwerfen werden nur neue Entwurfsdateien entfernt.
 
 Vor externen Foto- und Dokumentauswahlen wird das Formular gesichert. Nach

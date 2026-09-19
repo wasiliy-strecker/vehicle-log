@@ -41,6 +41,16 @@ und den Button „PDF auswählen/scannen“ zusammen, entsprechend der Foto-Card
 Ohne Anhänge erscheint „Keine aktuellen PDFs“. Auswahl, Scannen und
 Dokumentaktionen verwenden weiterhin dieselben Abläufe.
 
+Ab zwei aktuellen PDFs bietet die PDF-Card zusätzlich Sortieren durch
+längeres Drücken und Verschieben, einschließlich Zielmarkierung und Scrollen
+am Formularrand. Der Hinweis steht wie bei Fotos direkt unter der Überschrift.
+Die Fotokomponente bleibt unverändert. Die PDF-Komponente meldet geordnete
+Dokument-IDs an die vorhandene `changeDocuments`-Methode. Entwürfe, Korrekturen
+und gespeicherte Reihenfolgen verwenden weiterhin die bestehenden Datenwege.
+Während Verarbeitung oder Speichern und in reinen Ansichten ist Ziehen
+deaktiviert. `document_sorting_widget_test.dart` prüft die Bedienung und
+Wiederherstellung der Reihenfolge.
+
 Der Scanner ist app-lokal mit demselben Plugin und denselben Optionen wie in
 AI Contract Manager eingebunden: `google_mlkit_document_scanner` 0.4.1,
 Full-Modus, maximal 20 Seiten, JPEG und PDF, kein Galerieimport. Es wird nur die
