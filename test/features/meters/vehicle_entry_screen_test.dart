@@ -87,7 +87,7 @@ void main() {
       expect(find.text('Aktuelle PDFs (0)'), findsOneWidget);
       expect(find.text('Keine aktuellen PDFs'), findsOneWidget);
       await _tap(tester, 'PDF auswählen/scannen');
-      await _tap(tester, 'PDFs auswählen');
+      await _tap(tester, 'PDF auswählen');
       expect(find.text('Rechnung.pdf'), findsOneWidget);
       expect(find.text('Aktuelle PDFs (1)'), findsOneWidget);
       expect(find.text('Keine aktuellen PDFs'), findsNothing);

@@ -28,7 +28,15 @@ class ReadingDocumentEditor extends StatelessWidget {
           children: [
             ListTile(
               leading: const Icon(Icons.upload_file_outlined),
-              title: const Text('PDFs auswählen'),
+              title: const Text('PDF auswählen'),
+              subtitle:
+                  replacementId == null &&
+                      !kIsWeb &&
+                      defaultTargetPlatform == TargetPlatform.android
+                  ? const Text(
+                      'Mehrere PDFs: Erste Datei länger gedrückt halten, dann weitere auswählen.',
+                    )
+                  : null,
               onTap: () => Navigator.pop(context, false),
             ),
             if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android)

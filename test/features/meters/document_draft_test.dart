@@ -22,11 +22,13 @@ ReadingDocument _document(String id) => ReadingDocument(
 
 class _Documents implements DocumentRepository {
   final deleted = <String>[];
+  final multipleSelections = <bool>[];
   DocumentImportResult next = const DocumentImportResult();
   Future<void> Function()? before;
   Future<void> Function(String)? onDelete;
   @override
   Future<DocumentImportResult> pick({bool multiple = true}) async {
+    multipleSelections.add(multiple);
     await before?.call();
     return next;
   }
@@ -152,6 +154,7 @@ void main() {
         },
       );
       expect(session.documents.single.id, 'replacement');
+      expect(documents.multipleSelections, [false]);
       expect(session.changed, isTrue);
       final recovered = ReadingPhotoSession(
         route: session.route,
@@ -188,6 +191,8 @@ void main() {
         documents: [_document('first'), _document('second')],
       );
       await session.captureDocuments(scan: false, formFields: {'cost': ''});
+      expect(documents.multipleSelections, [true]);
+      expect(session.documents.map((d) => d.id), ['first', 'second']);
       await session.changeDocuments(session.documents.reversed.toList(), {});
       expect(session.documents.map((d) => d.id), ['second', 'first']);
       documents.next = const DocumentImportResult();
