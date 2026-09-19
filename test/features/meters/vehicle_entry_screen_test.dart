@@ -84,9 +84,13 @@ void main() {
       await tester.pumpAndSettle();
       await _tap(tester, 'Familienauto');
       await _tap(tester, 'Eintrag erfassen');
+      expect(find.text('Aktuelle PDFs (0)'), findsOneWidget);
+      expect(find.text('Keine aktuellen PDFs'), findsOneWidget);
       await _tap(tester, 'PDF auswählen/scannen');
       await _tap(tester, 'PDFs auswählen');
       expect(find.text('Rechnung.pdf'), findsOneWidget);
+      expect(find.text('Aktuelle PDFs (1)'), findsOneWidget);
+      expect(find.text('Keine aktuellen PDFs'), findsNothing);
       await tester.enterText(
         find.byKey(const ValueKey('care-activity')),
         'Wartung',

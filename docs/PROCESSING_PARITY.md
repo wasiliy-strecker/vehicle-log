@@ -36,6 +36,11 @@ gespeicherte Dateien. Bereits übernommene Dokumente erkennen veraltete Entwürf
 Ein noch nicht abgeschlossener Scan wird nach Prozessverlust nicht automatisch
 wiederaufgenommen. Die bestehenden Fotoabläufe bleiben erhalten.
 
+Im Formular fasst eine Card mit „Aktuelle PDFs“ und Anzahl die PDF-Liste
+und den Button „PDF auswählen/scannen“ zusammen, entsprechend der Foto-Card.
+Ohne Anhänge erscheint „Keine aktuellen PDFs“. Auswahl, Scannen und
+Dokumentaktionen verwenden weiterhin dieselben Abläufe.
+
 Der Scanner ist app-lokal mit demselben Plugin und denselben Optionen wie in
 AI Contract Manager eingebunden: `google_mlkit_document_scanner` 0.4.1,
 Full-Modus, maximal 20 Seiten, JPEG und PDF, kein Galerieimport. Es wird nur die
