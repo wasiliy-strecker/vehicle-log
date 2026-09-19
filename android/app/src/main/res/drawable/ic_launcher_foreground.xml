@@ -1,6 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<bitmap xmlns:android="http://schemas.android.com/apk/res/android"
-    android:src="@drawable/ic_vehicle_foreground"
-    android:gravity="fill"
-    android:filter="true"
-    android:antialias="true" />
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#F0F5F7" android:fillType="evenOdd" android:pathData="M41 31H67Q72 31 74 37L78 48Q82 51 82 56V65Q82 69 78 70V74Q78 77 75 77H72Q69 77 69 74V71H39V74Q39 77 36 77H33Q30 77 30 74V70Q26 69 26 65V56Q26 51 30 48L34 37Q36 31 41 31Z M41 37Q40 37 39.5 38.5L36 48H72L68.5 38.5Q68 37 67 37Z M35 55Q33 55 33 57V59Q33 61 35 61H42Q44 61 44 59V58Q44 56 42 56Z M73 55L66 56Q64 56 64 58V59Q64 61 66 61H73Q75 61 75 59V57Q75 55 73 55Z" />
+</vector>

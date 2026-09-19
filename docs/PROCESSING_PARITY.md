@@ -126,11 +126,13 @@ Speichern und die Verträglichkeit mit bisherigen Monatsangaben.
 
 ## Neues Start-Icon am 19.09.2026
 
-Das einfache Fahrzeugsymbol wurde durch ein hochauflösendes Fahrzeugmotiv mit
-Dokumenten ersetzt. Ein adaptives Android-Icon und explizite Start-Themes ab
-Android 12 verwenden den großen Vordergrund statt eines vergrößerten kleinen
-Launcher-PNGs. Beide Start-Themes verwenden den stahlblauen Markenhintergrund.
-Icon-Quellen, Erzeugungsprompts und Renderweg stehen in `assets/branding/README.md`.
+Das Start-Icon verwendet auf Nutzerwunsch ein schlichtes Fahrzeugsymbol als
+native Vektorgrafik. Die vorübergehend verwendete detaillierte Rastergrafik
+wurde entfernt. Ein adaptives Android-Icon kombiniert das Symbol mit dem
+stahlblauen Markenhintergrund. Die Start-Themes ab Android 12 verwenden direkt
+den transparenten Vektor ohne zusätzliche Icon-Hintergrundfläche. Damit gibt
+es keine abweichende rechteckige Farbfläche im Motiv. SVG-Quelle, Renderweg und
+manuelle Prüfschritte stehen in `assets/branding/README.md`.
 Die fachliche Verarbeitung bleibt unverändert. Ursprüngliche Referenzhashes
 bleiben erhalten, die beiden Startfarben sind als Stylingausnahmen dokumentiert.
 
