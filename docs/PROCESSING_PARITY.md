@@ -123,3 +123,19 @@ Abbrechen erhält den bisherigen Wert. Datenbank, Backups und PDF-Ausgabe
 verwenden weiterhin dasselbe Textfeld. Es ist keine Migration erforderlich.
 `first_registration_picker_test.dart` prüft Auswahl, Abbruch, Entfernen,
 Speichern und die Verträglichkeit mit bisherigen Monatsangaben.
+
+## Neues Start-Icon am 19.09.2026
+
+Das einfache Fahrzeugsymbol wurde durch ein hochauflösendes Fahrzeugmotiv mit
+Dokumenten ersetzt. Ein adaptives Android-Icon und explizite Start-Themes ab
+Android 12 verwenden den großen Vordergrund statt eines vergrößerten kleinen
+Launcher-PNGs. Beide Start-Themes verwenden den stahlblauen Markenhintergrund.
+Icon-Quellen, Erzeugungsprompts und Renderweg stehen in `assets/branding/README.md`.
+Die fachliche Verarbeitung bleibt unverändert. Ursprüngliche Referenzhashes
+bleiben erhalten, die beiden Startfarben sind als Stylingausnahmen dokumentiert.
+
+Der Erstzulassungs-Picker war bereits korrekt implementiert. Die bisher
+installierte Dev-APK vom 19.09.2026 um 06:32 enthielt ihn jedoch noch nicht.
+Die für das native Icon notwendige APK-Aktualisierung liefert den aktuellen
+Dart-Stand dauerhaft aus, einschließlich Datumsauswahl und Bearbeiten ohne
+Korrekturverlauf. Vor Installation Paket, Debug-Status und Signatur vergleichen.

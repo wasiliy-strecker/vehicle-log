@@ -499,6 +499,26 @@
         "test/features/meters/editing_without_history_test.dart",
         "test/features/meters/reading_evidence_explanation_test.dart"
       ]
+    },
+    "android/app/src/main/res/values/colors.xml": {
+      "sourceSha256": "495c262a35b7ac5131b073f1748ad708b14604e7f04f994f5241cb8a36e5a23b",
+      "localPath": "android/app/src/main/res/values/colors.xml",
+      "localSha256": "1d8a6d60a022a6199eb271eff9c5381745c5fbb3820b6e70e13349e6ac0f126d",
+      "reason": "User-requested vehicle icon redesign. Steel-blue native launch background matches the new adaptive icon in both themes. Built APK resources and signing are verified. Visual smartphone verification is left to the user as requested.",
+      "tests": [
+        "test/widget_test.dart",
+        "test/app/app_theme_test.dart"
+      ]
+    },
+    "android/app/src/main/res/values-night/colors.xml": {
+      "sourceSha256": "92586d3acfc71bbdc05345f0b0708a5527d9930b3ea80c493454c28edf177344",
+      "localPath": "android/app/src/main/res/values-night/colors.xml",
+      "localSha256": "4ad05576c64944a23172477bb59998259dfdbc75a059440efce764d8d18a9d30",
+      "reason": "User-requested vehicle icon redesign. Steel-blue native launch background matches the new adaptive icon in both themes. Built APK resources and signing are verified. Visual smartphone verification is left to the user as requested.",
+      "tests": [
+        "test/widget_test.dart",
+        "test/app/app_theme_test.dart"
+      ]
     }
   }
 }
