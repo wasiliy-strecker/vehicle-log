@@ -106,7 +106,7 @@ class ReadingDocumentEditor extends StatelessWidget {
       OutlinedButton.icon(
         onPressed: enabled && !session.busy ? () => _add(context) : null,
         icon: const Icon(Icons.note_add_outlined),
-        label: const Text('Dokument hinzufügen'),
+        label: const Text('PDF auswählen/scannen'),
       ),
     ],
   );

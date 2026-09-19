@@ -84,7 +84,7 @@ void main() {
       await tester.pumpAndSettle();
       await _tap(tester, 'Familienauto');
       await _tap(tester, 'Eintrag erfassen');
-      await _tap(tester, 'Dokument hinzufügen');
+      await _tap(tester, 'PDF auswählen/scannen');
       await _tap(tester, 'PDFs auswählen');
       expect(find.text('Rechnung.pdf'), findsOneWidget);
       await tester.enterText(

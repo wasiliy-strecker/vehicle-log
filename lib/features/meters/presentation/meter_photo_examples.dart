@@ -17,7 +17,7 @@ const meterPhotoExamples = [
     label: 'Werkstattunterlagen',
     icon: Icons.document_scanner_outlined,
     description:
-        'Scanne Rechnungen und Prüfberichte über „Dokument hinzufügen“ oder fotografiere einzelne Belege.',
+        'Scanne Rechnungen und Prüfberichte über „PDF auswählen/scannen“ oder fotografiere einzelne Belege.',
   ),
   (
     label: 'Kilometerstand vergleichen',

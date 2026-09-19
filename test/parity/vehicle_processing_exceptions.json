@@ -346,7 +346,7 @@
     "lib/features/meters/presentation/meter_photo_examples.dart": {
       "sourceSha256": "0c9c3c5749ce97d3f95122023185a50fb731d21a90a4b2a5ba46fc6a5cea36d5",
       "localPath": "lib/features/meters/presentation/meter_photo_examples.dart",
-      "localSha256": "571b14910e0495bfeb2f17beebb5c5c346f21523ac0c045edf8002998720e346",
+      "localSha256": "88d010f65c3c1ea07a183a8336832c7d010cb255c8f9d1e6cbdff8e5e5c154d6",
       "reason": "Vehicle app title, steel-blue/anthracite styling, category icons and wording. Existing navigation and control behavior are retained.",
       "tests": [
         "test/widget_test.dart",
