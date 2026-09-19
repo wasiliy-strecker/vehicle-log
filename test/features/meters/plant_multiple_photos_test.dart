@@ -78,7 +78,6 @@ void main() {
             value: original.value,
             capturedAt: original.capturedAt,
             note: original.note,
-            reason: '',
           );
           final loaded = (await readings.findById(updated.id))!;
           expect(loaded.toJson(), updated.toJson());
@@ -90,11 +89,8 @@ void main() {
             photos[1].id,
             photos[2].id,
           ]);
-          expect(loaded.photoHistory.single.id, photos[0].id);
-          expect(
-            (await readings.loadRevisions(loaded.id)).single.changes,
-            isEmpty,
-          );
+          expect(loaded.photoHistory, isEmpty);
+          expect(await readings.loadRevisions(loaded.id), isEmpty);
           expect(
             await integrity.readingManifestHash(loaded),
             loaded.manifestSha256,
@@ -157,10 +153,7 @@ void main() {
           await integrity.readingManifestHash(restored),
           reading.manifestSha256,
         );
-        expect(
-          (await restoredReadings.loadRevisions(reading.id)).single.toJson(),
-          (await readings.loadRevisions(reading.id)).single.toJson(),
-        );
+        expect(await restoredReadings.loadRevisions(reading.id), isEmpty);
         for (final photo in restored.allPhotoVersions) {
           expect(
             await integrity.sha256Bytes(await File(photo.path).readAsBytes()),

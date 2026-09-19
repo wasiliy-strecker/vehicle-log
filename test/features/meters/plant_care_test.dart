@@ -22,7 +22,7 @@ void main() {
   const integrity = IntegrityService();
 
   test(
-    'care fields survive SQLite, dashboard, JSON, revisions and backup',
+    'care fields survive SQLite, dashboard, JSON, edits and backup',
     () async {
       final db = AppDatabase.memory();
       addTearDown(db.close);
@@ -79,16 +79,10 @@ void main() {
         value: old.value,
         capturedAt: old.capturedAt,
         note: old.note,
-        reason: '',
       );
       expect(corrected.activity, CareActivity.fertilizing);
       expect(corrected.manifestSha256, isNot(old.manifestSha256));
-      expect(
-        (await readings.loadRevisions(
-          old.id,
-        )).single.changes['Aktivität']!.after,
-        'Reparatur',
-      );
+      expect(await readings.loadRevisions(old.id), isEmpty);
       final growth = created.last;
       final cleared = await service.update(
         existing: growth,
@@ -96,15 +90,9 @@ void main() {
         value: growth.value,
         capturedAt: growth.capturedAt,
         note: growth.note,
-        reason: '',
       );
       expect(cleared.summary, 'Kilometerstand');
-      final revision = (await readings.loadRevisions(growth.id)).single;
-      expect(
-        revision.changes['Kilometerangabe']!.after,
-        'Ohne Kilometerangabe',
-      );
-      expect(revision.changes, isNot(contains('Kilometerstand')));
+      expect(await readings.loadRevisions(growth.id), isEmpty);
 
       final temp = await Directory.systemTemp.createTemp('plant_care_backup_');
       addTearDown(() => temp.delete(recursive: true));
@@ -139,12 +127,7 @@ void main() {
           restored.manifestSha256,
         );
       }
-      expect(
-        (await targetReadings.loadRevisions(
-          old.id,
-        )).single.changes['Aktivität']!.after,
-        'Reparatur',
-      );
+      expect(await targetReadings.loadRevisions(old.id), isEmpty);
     },
   );
 

@@ -151,14 +151,14 @@ void main() {
     expect(readings.items.values.single.meter.unit, 'km');
     expect(reminders.acknowledgedMeterIds, [meter.id]);
     await tester.pumpAndSettle();
-    expect(find.widgetWithText(OutlinedButton, 'Korrigieren'), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, 'Bearbeiten'), findsOneWidget);
     expect(
       find.widgetWithText(OutlinedButton, 'Eintrag löschen'),
       findsOneWidget,
     );
     expect(find.byType(PopupMenuButton<String>), findsNothing);
 
-    await tester.tap(find.text('Korrigieren'));
+    await tester.tap(find.text('Bearbeiten'));
     await tester.pumpAndSettle();
     expect(find.text('Aktuelle Fotos (1)'), findsOneWidget);
     expect(find.text('Weiteres Foto aufnehmen'), findsOneWidget);
@@ -166,7 +166,7 @@ void main() {
       find.text(
         'Nach dem Speichern findest du diese Änderung unter „Korrekturverlauf“. Dort siehst du die geänderten Angaben mit „Vorher“ und „Neu“.',
       ),
-      findsOneWidget,
+      findsNothing,
     );
     expect(find.textContaining('deinen Grund'), findsNothing);
 
@@ -349,7 +349,7 @@ void main() {
       expect(find.text('Geringerer Kilometerstand'), findsOneWidget);
       expect(find.text('Neu abgelesen'), findsOneWidget);
 
-      await tester.tap(find.text('Korrigieren'));
+      await tester.tap(find.text('Bearbeiten'));
       await tester.pumpAndSettle();
       await tester.enterText(
         find.widgetWithText(TextFormField, 'Kilometerstand (optional)'),
@@ -359,7 +359,7 @@ void main() {
       expect(find.textContaining('niedrigeren Stand'), findsNothing);
       expect(readings.watchForMeterCalls, 0);
 
-      final save = find.text('Korrektur protokollieren');
+      final save = find.text('Änderungen speichern');
       await tester.ensureVisible(save);
       await tester.tap(save);
       await tester.pumpAndSettle();

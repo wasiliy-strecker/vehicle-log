@@ -10,7 +10,7 @@ import '../../support/fakes.dart';
 
 void main() {
   test(
-    'photo correction archives original and records integrity change',
+    'photo edit updates integrity and removes unreferenced original',
     () async {
       final repository = MemoryReadingRepository();
       final meters = MemoryMeterRepository();
@@ -48,7 +48,6 @@ void main() {
         value: ReadingValue.tryParse('124')!,
         capturedAt: capturedAt,
         note: 'Neues Foto geprüft',
-        reason: 'Foto war unscharf',
         replacementPhoto: StoredMeterPhoto(
           path: '/tmp/new.jpg',
           sha256: 'c' * 64,
@@ -60,33 +59,15 @@ void main() {
       expect(updated.capturedAt, existing.capturedAt);
       expect(updated.photoPath, '/tmp/new.jpg');
       expect(updated.photoSha256, 'c' * 64);
-      expect(updated.photoHistory, hasLength(1));
-      expect(updated.photoHistory.single.path, '/tmp/original.jpg');
-      expect(updated.photoHistory.single.sha256, 'a' * 64);
+      expect(updated.photoHistory, isEmpty);
       expect(updated.lowerReadingReason, LowerReadingReason.meterReplacement);
       expect(updated.manifestSha256, hasLength(64));
-      expect(photos.deleted, isEmpty);
+      expect(photos.deleted, ['/tmp/original.jpg']);
       expect(reminders.scheduledLatestReadings.last?.id, updated.id);
       expect(evidencePhotos.preparedSha256, ['c' * 64]);
 
       final revisions = await repository.loadRevisions(existing.id);
-      expect(revisions, hasLength(1));
-      expect(
-        revisions.single.changes,
-        contains('Prüfwert des Fotos (SHA-256)'),
-      );
-      expect(revisions.single.changes, isNot(contains('OCR-Kandidat')));
-      expect(updated.ocrCandidate, isEmpty);
-      expect(updated.ocrRawText, isEmpty);
-      expect(updated.ocrConfidence, isNull);
-
-      await service.delete(updated);
-      expect(
-        photos.deleted,
-        containsAll(['/tmp/original.jpg', '/tmp/new.jpg']),
-      );
-      expect(evidencePhotos.deletedSha256, containsAll(['a' * 64, 'c' * 64]));
-      expect(reminders.scheduledLatestReadings.last, isNull);
+      expect(revisions, isEmpty);
     },
   );
 }

@@ -143,7 +143,7 @@ void main() {
           await tester.pumpAndSettle();
           await _checkAction(tester, 'Fotos aus Galerie hinzufügen');
           await _checkAction(tester, 'Datum & Uhrzeit ändern');
-          await _checkAction(tester, 'Korrektur protokollieren');
+          await _checkAction(tester, 'Änderungen speichern');
           router.go('/settings');
           await tester.pumpAndSettle();
           await _checkAction(tester, 'Datenschutzerklärung öffnen');
@@ -163,11 +163,21 @@ Future<void> _checkAction(
     of: find.text(label),
     matching: find.byWidgetPredicate((w) => w is ButtonStyleButton),
   );
-  await tester.scrollUntilVisible(
-    button,
-    200,
-    scrollable: find.byType(Scrollable).first,
-  );
+  if (button.evaluate().isNotEmpty) {
+    await tester.ensureVisible(button);
+  } else {
+    // Lazy list children above the viewport may no longer be built.
+    tester
+        .state<ScrollableState>(find.byType(Scrollable).first)
+        .position
+        .jumpTo(0);
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      button,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+  }
   await tester.pumpAndSettle();
   final rect = tester.getRect(button);
   final text = tester.getRect(find.text(label));

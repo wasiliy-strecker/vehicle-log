@@ -1,8 +1,3 @@
-const correctionHistoryTitle = 'Korrekturverlauf';
-
-const correctionHistoryText =
-    'Hier findest du jede gespeicherte Korrektur mit Zeitpunkt, den geänderten Angaben und – falls angegeben – einem Grund.';
-
 const pdfPurposeTitle = 'Wozu dient das Fahrzeugprotokoll?';
 
 const pdfPurposeText =

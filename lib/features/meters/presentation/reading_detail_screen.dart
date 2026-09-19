@@ -5,7 +5,6 @@ import 'package:universal_io/io.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import '../../../app/app_providers.dart';
 import '../../../app/widgets/app_snack_bar.dart';
@@ -13,12 +12,10 @@ import '../../../app/widgets/confirm_dialog.dart';
 import '../../../app/widgets/pdf_export_progress_dialog.dart';
 import '../../../core/integrity/integrity_copy.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../core/utils/reading_time.dart';
 import '../../evidence/application/evidence_report_service.dart';
 import '../../evidence/domain/evidence_export.dart';
 import '../../evidence/presentation/evidence_export_card.dart';
 import '../../evidence/presentation/evidence_photo_mode_sheet.dart';
-import '../application/reading_revision_photos.dart';
 import '../domain/meter.dart';
 import '../domain/meter_reading.dart';
 
@@ -55,7 +52,6 @@ class _ReadingDetailScreenState extends ConsumerState<ReadingDetailScreen> {
   }
 
   Widget _buildContent(MeterReading reading) {
-    final revisions = ref.watch(revisionsForReadingProvider(reading.id));
     final exportsAsync = ref.watch(evidenceForMeterProvider(reading.meterId));
     final singleExports = [
       ...?exportsAsync.value?.where(
@@ -102,8 +98,6 @@ class _ReadingDetailScreenState extends ConsumerState<ReadingDetailScreen> {
           const SizedBox(height: 18),
           _InfoCard(reading: reading),
           ReadingDocuments(documents: reading.documents),
-          const SizedBox(height: 12),
-          _CorrectionHistoryCard(reading: reading, revisions: revisions),
           const SizedBox(height: 20),
           Text(
             'Gespeicherte Fahrzeugprotokolle',
@@ -236,14 +230,13 @@ class _ReadingDetailScreenState extends ConsumerState<ReadingDetailScreen> {
       context,
       title: 'Eintrag löschen?',
       message:
-          'Eintrag, alle Foto-Versionen, der Korrekturverlauf und alle Einzel-PDFs dieses Eintrags werden dauerhaft gelöscht. Gespeicherte Verlaufs-PDFs bleiben erhalten. Bereits außerhalb der App gespeicherte Kopien bleiben bestehen.',
+          'Eintrag, alle zugehörigen Anhänge und Einzel-PDFs dieses Eintrags werden dauerhaft gelöscht. Gespeicherte Verlaufs-PDFs bleiben erhalten. Bereits außerhalb der App gespeicherte Kopien bleiben bestehen.',
     );
     if (!confirmed || !mounted) return;
     try {
       await ref.read(meterReadingServiceProvider).delete(reading);
       if (!mounted) return;
       ref.invalidate(readingByIdProvider(reading.id));
-      ref.invalidate(revisionsForReadingProvider(reading.id));
       ref.invalidate(evidenceForMeterProvider(reading.meterId));
       final messenger = ScaffoldMessenger.of(context);
       if (context.canPop()) {
@@ -343,7 +336,7 @@ class _ReadingActions extends StatelessWidget {
         OutlinedButton.icon(
           onPressed: onEdit,
           icon: const Icon(Icons.edit_outlined),
-          label: const Text('Korrigieren'),
+          label: const Text('Bearbeiten'),
         ),
         const SizedBox(height: 12),
         OutlinedButton.icon(
@@ -412,349 +405,6 @@ class _InfoCard extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _CorrectionHistoryCard extends StatelessWidget {
-  const _CorrectionHistoryCard({
-    required this.reading,
-    required this.revisions,
-  });
-
-  final MeterReading reading;
-  final AsyncValue<List<ReadingRevision>> revisions;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.history_outlined,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                const SizedBox(width: 8),
-                const Expanded(
-                  child: Text(
-                    correctionHistoryTitle,
-                    style: TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            const Text(correctionHistoryText),
-            const SizedBox(height: 12),
-            revisions.when(
-              loading: () => const LinearProgressIndicator(),
-              error: (_, _) => const Text(
-                'Der Korrekturverlauf konnte nicht geladen werden.',
-              ),
-              data: (items) =>
-                  _RevisionList(revisions: items, reading: reading),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _RevisionList extends StatelessWidget {
-  const _RevisionList({required this.revisions, required this.reading});
-
-  final List<ReadingRevision> revisions;
-  final MeterReading reading;
-
-  @override
-  Widget build(BuildContext context) {
-    if (revisions.isEmpty) {
-      return const Text('Für diesen Eintrag gibt es noch keine Korrekturen.');
-    }
-
-    final newestFirst = [...revisions]
-      ..sort((left, right) => right.changedAt.compareTo(left.changedAt));
-    return Column(
-      children: [
-        for (final entry in newestFirst.indexed) ...[
-          if (entry.$1 > 0) const Divider(height: 24),
-          _RevisionEntry(revision: entry.$2, reading: reading),
-        ],
-      ],
-    );
-  }
-}
-
-class _RevisionEntry extends StatelessWidget {
-  const _RevisionEntry({required this.revision, required this.reading});
-
-  final ReadingRevision revision;
-  final MeterReading reading;
-
-  @override
-  Widget build(BuildContext context) {
-    final visibleChanges = visibleRevisionChanges(
-      revision,
-    ).toList(growable: false);
-    final revisionPhotos = photosForRevision(
-      reading: reading,
-      revision: revision,
-    );
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Korrektur vom ${formatDateTime(revision.changedAt)}',
-          style: const TextStyle(fontWeight: FontWeight.w800),
-        ),
-        if (revision.reason.trim().isNotEmpty) ...[
-          const SizedBox(height: 6),
-          Text.rich(
-            TextSpan(
-              children: [
-                const TextSpan(
-                  text: 'Grund: ',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-                TextSpan(text: revision.reason.trim()),
-              ],
-            ),
-          ),
-        ],
-        if (visibleChanges.isNotEmpty || revisionPhotos != null)
-          const SizedBox(height: 10),
-        for (final change in visibleChanges) ...[
-          Text(change.key, style: const TextStyle(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 3),
-          _RevisionValue(
-            label: 'Vorher',
-            value: _displayValue(change.key, change.value.before),
-          ),
-          _RevisionValue(
-            label: 'Neu',
-            value: _displayValue(change.key, change.value.after),
-          ),
-          const SizedBox(height: 8),
-        ],
-        if (revision.documentChange != null) ...[
-          ExpansionTile(
-            title: const Text('PDF-Dokumente vorher'),
-            children: [
-              ReadingDocuments(
-                documents: [
-                  for (final id in revision.documentChange!.beforeIds)
-                    ...reading.allDocuments.where((d) => d.id == id),
-                ],
-              ),
-            ],
-          ),
-          ExpansionTile(
-            title: const Text('PDF-Dokumente danach'),
-            children: [
-              ReadingDocuments(
-                documents: [
-                  for (final id in revision.documentChange!.afterIds)
-                    ...reading.allDocuments.where((d) => d.id == id),
-                ],
-              ),
-            ],
-          ),
-        ],
-        if (revisionPhotos != null)
-          _RevisionPhotos(
-            photos: revisionPhotos,
-            revisionId: revision.id,
-            reordered:
-                revision.photoChange != null &&
-                revision.photoChange!.beforeIds.length ==
-                    revision.photoChange!.afterIds.length &&
-                revision.photoChange!.beforeIds.toSet().containsAll(
-                  revision.photoChange!.afterIds,
-                ),
-          ),
-      ],
-    );
-  }
-
-  String _displayValue(String key, String value) {
-    if (value.trim().isEmpty) return 'Keine Angabe';
-    if (key == 'Zeitpunkt des Eintrags') {
-      final formatted = formatRevisionTimestamp(
-        value,
-        DateFormat('dd.MM.yyyy, HH:mm'),
-      );
-      if (formatted != null) return formatted;
-    }
-    if (key == 'Kilometerstand') return '$value ${reading.meter.unit}';
-    return value;
-  }
-}
-
-class _RevisionValue extends StatelessWidget {
-  const _RevisionValue({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 1),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 62,
-            child: Text(
-              '$label:',
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-          Expanded(child: Text(value)),
-        ],
-      ),
-    );
-  }
-}
-
-class _RevisionPhotos extends StatelessWidget {
-  const _RevisionPhotos({
-    required this.photos,
-    required this.revisionId,
-    this.reordered = false,
-  });
-
-  final ReadingRevisionPhotos photos;
-  final String revisionId;
-  final bool reordered;
-
-  @override
-  Widget build(BuildContext context) {
-    if (photos.beforePhotos != null) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (reordered) ...[
-            const Text(
-              'Fotoreihenfolge geändert',
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 8),
-          ],
-          Text(
-            'Fotos nachher (${photos.afterList.length})',
-            style: const TextStyle(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 8),
-          ReadingPhotoGallery(photos: photos.afterList),
-          ExpansionTile(
-            tilePadding: EdgeInsets.zero,
-            title: Text('Fotos vorher (${photos.beforeList.length})'),
-            children: [ReadingPhotoGallery(photos: photos.beforeList)],
-          ),
-        ],
-      );
-    }
-    final after = photos.after;
-    final before = photos.before;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (after != null) ...[
-          const Text(
-            'Neues Foto',
-            style: TextStyle(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 8),
-          _RevisionPhotoPreview(
-            photo: after,
-            semanticsLabel: 'Neues Foto der Korrektur $revisionId',
-          ),
-          const SizedBox(height: 6),
-          Text(
-            '${after.source.label} · hinzugefügt ${formatDateTime(after.addedAt)}',
-          ),
-        ] else
-          const Row(
-            children: [
-              Icon(Icons.photo_camera_back_outlined, size: 20),
-              SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Fahrzeugfoto geändert',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-              ),
-            ],
-          ),
-        if (before != null) ...[
-          const SizedBox(height: 4),
-          Theme(
-            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-            child: ExpansionTile(
-              tilePadding: EdgeInsets.zero,
-              childrenPadding: const EdgeInsets.only(bottom: 4),
-              shape: const RoundedRectangleBorder(),
-              collapsedShape: const RoundedRectangleBorder(),
-              leading: const Icon(Icons.compare_outlined),
-              title: const Text('Vorheriges Foto anzeigen'),
-              children: [
-                _RevisionPhotoPreview(
-                  photo: before,
-                  semanticsLabel: 'Vorheriges Foto der Korrektur $revisionId',
-                ),
-                const SizedBox(height: 6),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    '${before.source.label} · hinzugefügt ${formatDateTime(before.addedAt)}',
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-class _RevisionPhotoPreview extends StatelessWidget {
-  const _RevisionPhotoPreview({
-    required this.photo,
-    required this.semanticsLabel,
-  });
-
-  final ReadingPhotoVersion photo;
-  final String semanticsLabel;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      label: semanticsLabel,
-      image: true,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: AspectRatio(
-          aspectRatio: 4 / 3,
-          child: Image.file(
-            File(photo.path),
-            fit: BoxFit.contain,
-            errorBuilder: (_, _, _) => const ColoredBox(
-              color: Colors.black12,
-              child: Center(child: Icon(Icons.broken_image_outlined)),
-            ),
-          ),
-        ),
       ),
     );
   }

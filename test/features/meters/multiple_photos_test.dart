@@ -3,7 +3,6 @@ import 'package:fahrzeugakte/core/files/meter_photo_repository.dart';
 import 'package:fahrzeugakte/core/integrity/integrity_service.dart';
 import 'package:fahrzeugakte/core/persistence/app_database.dart';
 import 'package:fahrzeugakte/features/meters/application/meter_services.dart';
-import 'package:fahrzeugakte/features/meters/application/reading_revision_photos.dart';
 import 'package:fahrzeugakte/features/meters/data/drift_meter_repositories.dart';
 import 'package:fahrzeugakte/features/meters/domain/meter_reading.dart';
 import 'package:fahrzeugakte/features/meters/domain/reading_value.dart';
@@ -52,7 +51,6 @@ void main() {
         value: original.value,
         capturedAt: original.capturedAt,
         note: original.note,
-        reason: '',
         photos: [original.currentPhotos[2], ...original.currentPhotos.take(2)],
       );
       final loaded = (await readings.findById(original.id))!;
@@ -68,19 +66,16 @@ void main() {
       expect(loaded.value, original.value);
       expect(loaded.capturedAt, original.capturedAt);
       expect(loaded.note, original.note);
-      final revision = (await readings.loadRevisions(original.id)).single;
-      expect(revision.photoChange!.beforeIds, ['a', 'b', 'c']);
-      expect(revision.photoChange!.afterIds, ['c', 'a', 'b']);
+      expect(await readings.loadRevisions(original.id), isEmpty);
       expect(photos.deleted, isEmpty);
       await service.update(
         existing: updated,
         value: updated.value,
         capturedAt: updated.capturedAt,
         note: updated.note,
-        reason: '',
         photos: updated.currentPhotos,
       );
-      expect(await readings.loadRevisions(original.id), hasLength(1));
+      expect(await readings.loadRevisions(original.id), isEmpty);
     },
   );
   test(
@@ -114,7 +109,6 @@ void main() {
         value: loaded.value,
         capturedAt: loaded.capturedAt,
         note: loaded.note,
-        reason: '',
         photos: [
           loaded.currentPhotos.first,
           testPhoto('d', hash: testPhoto('b').sha256),
@@ -123,14 +117,10 @@ void main() {
         ],
       );
       expect(corrected.currentPhotos.map((p) => p.id), ['a', 'd', 'c', 'e']);
-      expect(corrected.photoHistory.map((p) => p.id), ['b']);
+      expect(corrected.photoHistory, isEmpty);
       expect(corrected.value.displayText, '25');
       expect(corrected.capturedAt, original.capturedAt);
-      final revision = (await readings.loadRevisions(original.id)).single;
-      final pair = photosForRevision(reading: corrected, revision: revision)!;
-      expect(pair.beforeList.map((p) => p.id), ['a', 'b', 'c']);
-      expect(pair.afterList.map((p) => p.id), ['a', 'd', 'c', 'e']);
-      expect(revision.reason, isEmpty);
+      expect(await readings.loadRevisions(original.id), isEmpty);
       loaded = (await readings.findById(original.id))!;
       expect(loaded.toJson(), corrected.toJson());
       await service.update(
@@ -138,29 +128,26 @@ void main() {
         value: loaded.value,
         capturedAt: loaded.capturedAt,
         note: loaded.note,
-        reason: '',
         photos: loaded.currentPhotos,
       );
-      expect(await readings.loadRevisions(original.id), hasLength(1));
+      expect(await readings.loadRevisions(original.id), isEmpty);
       final empty = await service.update(
         existing: loaded,
         value: loaded.value,
         capturedAt: loaded.capturedAt,
         note: loaded.note,
-        reason: '',
         photos: [],
       );
       expect(empty.hasPhoto, false);
       expect(empty.currentPhotos, isEmpty);
-      expect(empty.allPhotoVersions, hasLength(5));
-      expect(photos.deleted, isEmpty);
-      expect(
-        photosForRevision(
-          reading: empty,
-          revision: revision,
-        )!.afterList.map((p) => p.id),
-        ['a', 'd', 'c', 'e'],
-      );
+      expect(empty.allPhotoVersions, isEmpty);
+      expect(photos.deleted.toSet(), {
+        '/a.jpg',
+        '/b.jpg',
+        '/c.jpg',
+        '/d.jpg',
+        '/e.jpg',
+      });
       await service.delete(empty);
       expect(photos.deleted.toSet(), {
         '/a.jpg',

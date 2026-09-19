@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fahrzeugakte/app/app.dart';
 import 'package:fahrzeugakte/app/app_providers.dart';
 import 'package:fahrzeugakte/app/app_theme.dart';
+import 'package:fahrzeugakte/core/files/evidence_photo_asset_repository.dart';
 import 'package:fahrzeugakte/core/files/meter_photo_repository.dart';
 import 'package:fahrzeugakte/features/meters/domain/meter_reading.dart';
 import 'package:fahrzeugakte/features/meters/presentation/reading_photo_gallery.dart';
@@ -34,6 +35,9 @@ void main() {
               MemoryEvidenceExportRepository(),
             ),
             meterPhotoCaptureRepositoryProvider.overrideWithValue(photos),
+            evidencePhotoAssetRepositoryProvider.overrideWithValue(
+              const NoopEvidencePhotoAssetRepository(),
+            ),
             meterReminderRepositoryProvider.overrideWithValue(
               NoopMeterReminderRepository(),
             ),
@@ -67,27 +71,24 @@ void main() {
       expect(manual.currentPhotos, isEmpty);
       expect(manual.photoHistory, isEmpty);
 
-      await _tap(tester, 'Korrigieren');
+      await _tap(tester, 'Bearbeiten');
       await _tap(tester, 'Foto aufnehmen');
-      await _tap(tester, 'Korrektur protokollieren');
+      await _tap(tester, 'Änderungen speichern');
       await _wait(tester, () => readings.items.values.single.hasPhoto);
       final single = readings.items.values.single;
       expect(single.currentPhotos, hasLength(1));
       expect(single.photoHistory, isEmpty);
-      await _tap(tester, 'Korrigieren');
+      await _tap(tester, 'Bearbeiten');
       await _photoAction(tester, 1, 'Foto entfernen');
-      await _tap(tester, 'Korrektur protokollieren');
+      await _tap(tester, 'Änderungen speichern');
       await _wait(tester, () => !readings.items.values.single.hasPhoto);
-      expect(
-        readings.items.values.single.photoHistory.single.id,
-        single.currentPhotos.single.id,
-      );
-      expect(photos.deleted, isNot(contains('/photo3.jpg')));
+      expect(readings.items.values.single.photoHistory, isEmpty);
+      expect(photos.deleted, contains('/photo3.jpg'));
 
-      await _tap(tester, 'Korrigieren');
+      await _tap(tester, 'Bearbeiten');
       await _tap(tester, 'Fotos aus Galerie hinzufügen');
       await _photoAction(tester, 2, 'Nach vorne');
-      await _tap(tester, 'Korrektur protokollieren');
+      await _tap(tester, 'Änderungen speichern');
       await _wait(
         tester,
         () => readings.items.values.single.currentPhotos.length == 2,
@@ -97,10 +98,10 @@ void main() {
         '/photo5.jpg',
         '/photo4.jpg',
       ]);
-      expect(saved.photoHistory.single.id, single.currentPhotos.single.id);
+      expect(saved.photoHistory, isEmpty);
       expect(saved.value.displayText, '12');
       expect(saved.capturedAt, manual.capturedAt);
-      expect(await readings.loadRevisions(saved.id), hasLength(3));
+      expect(await readings.loadRevisions(saved.id), isEmpty);
       expect(tester.takeException(), isNull);
     },
   );
@@ -124,6 +125,9 @@ void main() {
               MemoryEvidenceExportRepository(),
             ),
             meterPhotoCaptureRepositoryProvider.overrideWithValue(photos),
+            evidencePhotoAssetRepositoryProvider.overrideWithValue(
+              const NoopEvidencePhotoAssetRepository(),
+            ),
             meterReminderRepositoryProvider.overrideWithValue(
               NoopMeterReminderRepository(),
             ),
@@ -176,12 +180,12 @@ void main() {
       expect(find.byType(InteractiveViewer), findsWidgets);
       await tester.tap(find.byType(BackButton).last);
       await tester.pumpAndSettle();
-      await _tap(tester, 'Korrigieren');
+      await _tap(tester, 'Bearbeiten');
       await _photoAction(tester, 2, 'Foto ersetzen');
       await _tap(tester, 'Aus Galerie wählen');
       await _photoAction(tester, 3, 'Foto entfernen');
       await _tap(tester, 'Fotos aus Galerie hinzufügen');
-      await _tap(tester, 'Korrektur protokollieren');
+      await _tap(tester, 'Änderungen speichern');
       await _wait(
         tester,
         () => readings.items.values.single.currentPhotos.length == 5,
@@ -190,27 +194,29 @@ void main() {
       expect(corrected.value.displayText, '25');
       expect(corrected.capturedAt, first.capturedAt);
       expect(corrected.currentPhotos.first.id, first.currentPhotos.first.id);
-      expect(corrected.photoHistory.map((p) => p.id).toSet(), {
-        first.currentPhotos[1].id,
-        first.currentPhotos[2].id,
-      });
-      final revision = (await readings.loadRevisions(first.id)).single;
+      expect(corrected.photoHistory, isEmpty);
+      expect(await readings.loadRevisions(first.id), isEmpty);
       expect(
-        revision.photoChange!.beforeIds,
-        first.currentPhotos.map((p) => p.id),
+        photos.deleted,
+        unorderedEquals([
+          first.currentPhotos[1].path,
+          first.currentPhotos[2].path,
+        ]),
       );
-      expect(
-        revision.photoChange!.afterIds,
-        corrected.currentPhotos.map((p) => p.id),
-      );
-      expect(photos.deleted, isEmpty);
-      await _tap(tester, 'Korrigieren');
+      await _tap(tester, 'Bearbeiten');
       await _tap(tester, 'Weiteres Foto aufnehmen');
       await tester.tap(find.byType(BackButton).last);
       await tester.pumpAndSettle();
-      await _tap(tester, 'Korrektur verwerfen');
+      await _tap(tester, 'Änderungen verwerfen');
       expect(readings.items.values.single.toJson(), corrected.toJson());
-      expect(photos.deleted, ['/photo8.jpg']);
+      expect(
+        photos.deleted,
+        unorderedEquals([
+          first.currentPhotos[1].path,
+          first.currentPhotos[2].path,
+          '/photo8.jpg',
+        ]),
+      );
       expect(tester.takeException(), isNull);
     },
   );
@@ -238,7 +244,6 @@ void main() {
                 child: ReadingPhotoEditor(
                   photos: [photo, photo, photo],
                   busy: false,
-                  correction: true,
                   onCamera: () {},
                   onGallery: () {},
                   onReplace: (_) {},

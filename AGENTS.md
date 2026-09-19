@@ -9,8 +9,12 @@ PDF-Dokumente und der Android-Scanner sind autorisierte fachliche Erweiterungen.
 Den Dokumentscanner aus AI Contract Manager app-lokal übernehmen. Keine Cloud,
 Konten, Analytics oder automatische Rechnungsanalyse ergänzen.
 
-Neue Daten und aktuelle sowie historische Anhänge müssen in Entwürfen,
-Persistenz, Korrekturen, Prüfsummen und verschlüsselten Backups erhalten bleiben.
+Auf ausdrücklichen Nutzerwunsch vom 19.09.2026 gibt es keinen sichtbaren
+Korrekturverlauf und keine neuen Revisionen oder historischen Anhangsversionen.
+Bearbeiten speichert nur den aktuellen Stand. Bereits gespeicherte Altdaten
+und Dateien bestehender Revisionen bleiben erhalten und backupfähig. Nicht
+mehr referenzierte entfernte Anhänge erst nach erfolgreichem Speichern
+bereinigen. Abbruch und Speicherfehler dürfen alte Dateien nicht löschen.
 Quellhashes nicht überschreiben. Abweichungen in docs/PROCESSING_PARITY.md und
 Paritätsausnahmen dokumentieren und testen.
 

@@ -1,9 +1,13 @@
 # Fahrzeugakte
 
+Einträge werden über „Bearbeiten“ und „Änderungen speichern“ geändert.
+Es gibt keinen Korrekturverlauf und keine neuen historischen Versionen.
+Vorhandene Altdaten bleiben für kompatible Backups erhalten.
+
 Eigenständige Flutter-App für Wartungen, Reparaturen, HU/AU und die Geschichte
 eines Fahrzeugs. Grundlage ist Mein Pflanzenbuch / PflanzenLog, Commit
 `0fa2f85d26047f1f22ef6fae17cf93d000ca66e3`. Navigation, Fotoverwaltung,
-Korrekturen, lokale Erinnerungen, PDF-Protokolle und verschlüsselte Backups
+Bearbeitung, lokale Erinnerungen, PDF-Protokolle und verschlüsselte Backups
 folgen dieser Vorlage. Stahlblau und Anthrazit geben der App eine eigene Optik.
 
 ## Fahrzeuge und Einträge
@@ -33,9 +37,9 @@ statt. Es gibt keinen AI-Gateway-Aufruf.
 Fotos und PDFs können gemeinsam zu einem Eintrag gehören. Original-PDFs werden
 unverändert im privaten App-Speicher abgelegt. Passwortgeschützte, beschädigte
 und leere PDFs werden abgewiesen. Die Dokumentliste bietet Öffnen, Teilen,
-Ersetzen, Entfernen und Sortieren. Korrekturen archivieren frühere Anhänge.
+Ersetzen, Entfernen und Sortieren. Neue Änderungen archivieren keine früheren Anhänge.
 Ab zwei aktuellen PDFs lassen sich die Zeilen im Erfassungs- und
-Korrekturformular wie Fotos länger gedrückt halten und verschieben.
+Bearbeitungsformular wie Fotos länger gedrückt halten und verschieben.
 Der Sortierhinweis steht direkt unter der Überschrift. Am Bildschirmrand
 scrollt das Formular beim Ziehen automatisch. Die Menüaktionen „Nach vorne“
 und „Nach hinten“ bleiben ebenfalls verfügbar.

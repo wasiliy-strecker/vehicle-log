@@ -8,7 +8,6 @@ import 'package:fahrzeugakte/core/persistence/app_database.dart';
 import 'package:fahrzeugakte/features/backup/application/encrypted_backup_service.dart';
 import 'package:fahrzeugakte/features/evidence/domain/evidence_export.dart';
 import 'package:fahrzeugakte/features/meters/application/meter_services.dart';
-import 'package:fahrzeugakte/features/meters/application/reading_revision_photos.dart';
 import 'package:fahrzeugakte/features/meters/data/drift_meter_repositories.dart';
 import 'package:fahrzeugakte/features/meters/domain/meter_reading.dart';
 import 'package:fahrzeugakte/features/meters/domain/reading_value.dart';
@@ -69,7 +68,6 @@ void main() {
         value: ReadingValue.tryParseWhole('8')!,
         capturedAt: loaded.capturedAt,
         note: 'Korrigiert',
-        reason: '',
       );
       final reloaded = (await readings.findById(loaded.id))!;
       expect(reloaded.toJson(), corrected.toJson());
@@ -78,7 +76,7 @@ void main() {
         await const IntegrityService().readingManifestHash(reloaded),
         reloaded.manifestSha256,
       );
-      expect((await readings.loadRevisions(loaded.id)).single.reason, isEmpty);
+      expect(await readings.loadRevisions(loaded.id), isEmpty);
       await service.delete(reloaded);
       expect(await readings.findById(loaded.id), isNull);
       expect(await readings.loadRevisions(loaded.id), isEmpty);
@@ -96,57 +94,48 @@ void main() {
     },
   );
 
-  test(
-    'adding the first photo creates a revision without an empty photo archive',
-    () async {
-      final readings = MemoryReadingRepository();
-      final service = MeterReadingService(
-        meters: MemoryMeterRepository(),
-        readings: readings,
-        exports: MemoryEvidenceExportRepository(),
-        photos: _NoPhotoAccess(),
-        reminders: NoopMeterReminderRepository(),
-      );
-      final manual = sampleReading(source: ReadingSource.manual);
-      final updated = await service.update(
-        existing: manual,
-        value: manual.value,
+  test('adding and replacing photos keeps only the current version', () async {
+    final readings = MemoryReadingRepository();
+    final service = MeterReadingService(
+      meters: MemoryMeterRepository(),
+      readings: readings,
+      exports: MemoryEvidenceExportRepository(),
+      photos: _NoPhotoAccess(),
+      reminders: NoopMeterReminderRepository(),
+    );
+    final manual = sampleReading(source: ReadingSource.manual);
+    final updated = await service.update(
+      existing: manual,
+      value: manual.value,
+      capturedAt: manual.capturedAt,
+      note: '',
+      replacementPhoto: StoredMeterPhoto(
+        path: '/added.jpg',
+        sha256: 'b' * 64,
+        source: ReadingSource.gallery,
         capturedAt: manual.capturedAt,
-        note: '',
-        reason: '',
-        replacementPhoto: StoredMeterPhoto(
-          path: '/added.jpg',
-          sha256: 'b' * 64,
-          source: ReadingSource.gallery,
-          capturedAt: manual.capturedAt,
-        ),
-      );
-      final revision = (await readings.loadRevisions(manual.id)).single;
-      expect(updated.hasPhoto, isTrue);
-      expect(updated.source, ReadingSource.gallery);
-      expect(updated.photoHistory, isEmpty);
-      expect(updated.allPhotoPaths, {'/added.jpg'});
-      expect(revision.changes['Fotoquelle']!.before, 'Manuell erfasst');
-      final photos = photosForRevision(reading: updated, revision: revision)!;
-      expect(photos.before, isNull);
-      expect(photos.after!.path, '/added.jpg');
-      final replaced = await service.update(
-        existing: updated,
-        value: updated.value,
-        capturedAt: updated.capturedAt,
-        note: '',
-        reason: '',
-        replacementPhoto: StoredMeterPhoto(
-          path: '/next.jpg',
-          sha256: 'c' * 64,
-          source: ReadingSource.camera,
-          capturedAt: manual.capturedAt,
-        ),
-      );
-      expect(replaced.photoHistory.single.path, '/added.jpg');
-      expect(replaced.allPhotoPaths, {'/added.jpg', '/next.jpg'});
-    },
-  );
+      ),
+    );
+    expect(await readings.loadRevisions(manual.id), isEmpty);
+    expect(updated.hasPhoto, isTrue);
+    expect(updated.source, ReadingSource.gallery);
+    expect(updated.photoHistory, isEmpty);
+    expect(updated.allPhotoPaths, {'/added.jpg'});
+    final replaced = await service.update(
+      existing: updated,
+      value: updated.value,
+      capturedAt: updated.capturedAt,
+      note: '',
+      replacementPhoto: StoredMeterPhoto(
+        path: '/next.jpg',
+        sha256: 'c' * 64,
+        source: ReadingSource.camera,
+        capturedAt: manual.capturedAt,
+      ),
+    );
+    expect(replaced.photoHistory, isEmpty);
+    expect(replaced.allPhotoPaths, {'/next.jpg'});
+  });
 
   for (final mixed in [false, true]) {
     test(

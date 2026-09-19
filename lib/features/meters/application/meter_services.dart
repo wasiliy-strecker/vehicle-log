@@ -279,7 +279,6 @@ class MeterReadingService {
     required ReadingValue value,
     required DateTime capturedAt,
     required String note,
-    required String reason,
     CareActivity? activity,
     String? customActivityLabel,
     bool? hasMeasurement,
@@ -311,12 +310,6 @@ class MeterReadingService {
     final documentsChanged =
         integrity.canonicalJson(beforeDocumentIds) !=
         integrity.canonicalJson(afterDocumentIds);
-    final documentChange = documentsChanged
-        ? ReadingPhotoChange(
-            beforeIds: beforeDocumentIds,
-            afterIds: afterDocumentIds,
-          )
-        : null;
     activity ??= existing.activity;
     final selection = CareActivitySelection.fromText(
       activity == CareActivity.custom
@@ -361,96 +354,56 @@ class MeterReadingService {
     final photosChanged =
         beforeIds.length != afterIds.length ||
         beforeIds.indexed.any((entry) => entry.$2 != afterIds[entry.$1]);
-    final photoChange = photosChanged
-        ? ReadingPhotoChange(beforeIds: beforeIds, afterIds: afterIds)
-        : null;
     value = hasMeasurement
         ? _validateValue(value, existing: existing.value)
         : ReadingValue.tryParseWhole('0')!;
     final changedAt = storageTimestamp(DateTime.now());
     final readingTime = storageTimestamp(capturedAt);
     final timeChanged = !readingTime.isAtSameMomentAs(existing.capturedAt);
-    final changes = <String, ReadingChange>{};
-    if (existing.workshop != workshop) {
-      changes['Werkstatt'] = ReadingChange(
-        before: existing.workshop,
-        after: workshop,
-      );
-    }
-    if (existing.costCents != costCents) {
-      changes['Kosten'] = ReadingChange(
-        before: formatCost(existing.costCents),
-        after: formatCost(costCents),
-      );
-    }
-    if (documentsChanged) {
-      changes['PDF-Dokumente'] = ReadingChange(
-        before: existing.documents.map((d) => d.fileName).join(', '),
-        after: documents.map((d) => d.fileName).join(', '),
-      );
-    }
-    if (existing.activity != activity ||
-        existing.customActivityLabel != customActivityLabel) {
-      changes['Aktivität'] = ReadingChange(
-        before: existing.activityLabel,
-        after: selection.label,
-      );
-    }
-    if (existing.hasMeasurement != hasMeasurement) {
-      changes['Kilometerangabe'] = ReadingChange(
-        before: existing.measurementText,
-        after: hasMeasurement
-            ? '${value.displayText} ${existing.meter.unit}'
-            : 'Ohne Kilometerangabe',
-      );
-    }
-    if (existing.hasMeasurement &&
-        hasMeasurement &&
-        (existing.value.displayText != value.displayText ||
-            existing.value.compareTo(value) != 0)) {
-      changes['Kilometerstand'] = ReadingChange(
-        before: existing.value.displayText,
-        after: value.displayText,
-      );
-    }
-    if (timeChanged) {
-      changes['Zeitpunkt des Eintrags'] = ReadingChange(
-        before: timestampWithOffset(
-          existing.capturedAt,
-          existing.timezoneOffsetMinutes,
-        ),
-        after: timestampWithOffset(
-          readingTime,
-          capturedAt.timeZoneOffset.inMinutes,
-        ),
-      );
-    }
-    if (existing.note != note.trim()) {
-      changes['Notiz'] = ReadingChange(
-        before: existing.note,
-        after: note.trim(),
-      );
-    }
-    if (replacementPhoto != null) {
-      changes['Prüfwert des Fotos (SHA-256)'] = ReadingChange(
-        before: existing.photoSha256,
-        after: replacementPhoto.sha256,
-      );
-      if (existing.source != replacementPhoto.source) {
-        changes['Fotoquelle'] = ReadingChange(
-          before: existing.source.label,
-          after: replacementPhoto.source.label,
-        );
-      }
-    }
-    if (changes.isEmpty && !photosChanged && !documentsChanged) {
-      return existing;
-    }
+    final changed =
+        existing.value.displayText != value.displayText ||
+        existing.value.compareTo(value) != 0 ||
+        timeChanged ||
+        existing.note != note.trim() ||
+        photosChanged ||
+        existing.activity != activity ||
+        existing.customActivityLabel != customActivityLabel ||
+        existing.hasMeasurement != hasMeasurement ||
+        existing.workshop != workshop ||
+        existing.costCents != costCents ||
+        documentsChanged;
+    if (!changed) return existing;
 
+    // Preserve only references belonging to revisions that already exist.
+    // Edits themselves no longer produce revision records or archived versions.
+    final legacyRevisions = await readings.loadRevisions(existing.id);
+    final legacyPhotoIds = <String>{
+      for (final revision in legacyRevisions) ...[
+        ...?revision.photoChange?.beforeIds,
+        ...?revision.photoChange?.afterIds,
+      ],
+    };
+    final legacyPhotoHashes = <String>{
+      for (final revision in legacyRevisions)
+        if (revision.changes['Prüfwert des Fotos (SHA-256)']
+            case final change?) ...[
+          change.before,
+          change.after,
+        ],
+    };
+    final legacyDocumentIds = <String>{
+      for (final revision in legacyRevisions) ...[
+        ...?revision.documentChange?.beforeIds,
+        ...?revision.documentChange?.afterIds,
+      ],
+    };
     final archivedPhotos = [
       ...existing.photoHistory,
       for (final photo in existing.currentPhotos)
-        if (!afterIds.contains(photo.id)) photo,
+        if (!afterIds.contains(photo.id) &&
+            (legacyPhotoIds.contains(photo.id) ||
+                legacyPhotoHashes.contains(photo.sha256)))
+          photo,
     ];
     final first = nextPhotos.firstOrNull;
     var updated = existing.copyWith(
@@ -471,7 +424,11 @@ class MeterReadingService {
       photoHistory: archivedPhotos,
       documentHistory: [
         ...existing.documentHistory,
-        ...existing.documents.where((d) => !afterDocumentIds.contains(d.id)),
+        ...existing.documents.where(
+          (d) =>
+              !afterDocumentIds.contains(d.id) &&
+              legacyDocumentIds.contains(d.id),
+        ),
       ],
       clearCost: clearCost,
       note: note.trim(),
@@ -486,23 +443,58 @@ class MeterReadingService {
     updated = updated.copyWith(
       manifestSha256: await integrity.readingManifestHash(updated),
     );
-    await readings.updateWithRevision(
-      updated,
-      ReadingRevision(
-        id: newLocalId('revision'),
-        readingId: existing.id,
-        changedAt: changedAt,
-        reason: reason.trim(),
-        changes: changes,
-        photoChange: photoChange,
-        documentChange: documentChange,
-      ),
-    );
+    await readings.save(updated);
+    await _cleanRemovedAttachments(existing, updated);
     for (final photo in updated.currentPhotos) {
       if (!beforeIds.contains(photo.id)) _prewarmEvidencePhoto(photo);
     }
     await _refreshReminderSummary(existing.meterId);
     return updated;
+  }
+
+  Future<void> _cleanRemovedAttachments(
+    MeterReading previous,
+    MeterReading updated,
+  ) async {
+    // Saving is already committed. A failed reference check or file deletion
+    // must never be reported as a failed edit or discard the new attachments.
+    try {
+      final allReadings = await readings.loadAll();
+      final referencedPaths = <String>{
+        ...updated.allPhotoPaths,
+        for (final reading in allReadings) ...reading.allPhotoPaths,
+        for (final document in updated.allDocuments) document.path,
+        for (final reading in allReadings)
+          for (final document in reading.allDocuments) document.path,
+      };
+      final referencedHashes = <String>{
+        for (final photo in updated.allPhotoVersions) photo.sha256,
+        for (final reading in allReadings)
+          for (final photo in reading.allPhotoVersions) photo.sha256,
+      };
+      for (final photo in previous.currentPhotos) {
+        if (referencedPaths.contains(photo.path)) continue;
+        try {
+          await photos.delete(photo.path);
+          if (!referencedHashes.contains(photo.sha256)) {
+            await evidencePhotos.delete(photo.sha256);
+          }
+        } on Object {
+          // Leave an unreferenced file for a later cleanup if storage is busy.
+        }
+      }
+      for (final document in previous.documents) {
+        if (referencedPaths.contains(document.path)) continue;
+        try {
+          final file = File(document.path);
+          if (await file.exists()) await file.delete();
+        } on Object {
+          // The saved entry remains valid even if cleanup needs to be retried.
+        }
+      }
+    } on Object {
+      // Keep files when their remaining references cannot be verified.
+    }
   }
 
   Future<void> delete(MeterReading reading) async {

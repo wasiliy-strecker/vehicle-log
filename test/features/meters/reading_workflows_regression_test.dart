@@ -1,11 +1,9 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:intl/intl.dart';
 import 'package:fahrzeugakte/core/files/meter_photo_repository.dart';
 import 'package:fahrzeugakte/core/integrity/integrity_service.dart';
 import 'package:fahrzeugakte/core/persistence/app_database.dart';
-import 'package:fahrzeugakte/core/utils/reading_time.dart';
 import 'package:fahrzeugakte/features/evidence/domain/evidence_export.dart';
 import 'package:fahrzeugakte/features/meters/application/meter_services.dart';
 import 'package:fahrzeugakte/features/meters/data/drift_meter_repositories.dart';
@@ -58,7 +56,6 @@ void main() {
         value: ReadingValue.tryParseWhole('90')!,
         capturedAt: time,
         note: 'Korrektur',
-        reason: '',
       );
       loaded = (await readings.findById(created.id))!;
       expect(loaded.toJson(), corrected.toJson());
@@ -66,7 +63,7 @@ void main() {
         await const IntegrityService().readingManifestHash(loaded),
         loaded.manifestSha256,
       );
-      expect((await readings.loadRevisions(created.id)).single.reason, isEmpty);
+      expect(await readings.loadRevisions(created.id), isEmpty);
     },
   );
 
@@ -106,7 +103,6 @@ void main() {
         value: old.value,
         capturedAt: old.capturedAt.toLocal(),
         note: 'Nur Notiz',
-        reason: '',
       );
       expect(corrected.value.toJson(), old.value.toJson());
       expect(corrected.wasManuallyCorrected, isFalse);
@@ -116,7 +112,6 @@ void main() {
           value: ReadingValue.tryParse('13,5')!,
           capturedAt: old.capturedAt,
           note: '',
-          reason: '',
         ),
         throwsFormatException,
       );
@@ -124,7 +119,7 @@ void main() {
   );
 
   test(
-    'note-only correction preserves original offset; time revisions include offsets',
+    'note edits preserve original offset and changed times use their new offset',
     () async {
       final readings = MemoryReadingRepository();
       final service = MeterReadingService(
@@ -140,36 +135,20 @@ void main() {
         value: old.value,
         capturedAt: old.capturedAt.toLocal(),
         note: 'Notiz',
-        reason: '',
       );
       expect(corrected.timezoneOffsetMinutes, -240);
       expect(corrected.capturedAt, old.capturedAt);
-      expect((await readings.loadRevisions(old.id)).single.changes.keys, [
-        'Notiz',
-      ]);
+      expect(await readings.loadRevisions(old.id), isEmpty);
       final nextTime = DateTime.utc(2026, 9, 15, 13);
-      await service.update(
+      final changed = await service.update(
         existing: corrected,
         value: old.value,
         capturedAt: nextTime,
         note: corrected.note,
-        reason: 'Datum korrigiert',
       );
-      final revision = (await readings.loadRevisions(old.id)).last;
-      final date = DateFormat('dd.MM.yyyy, HH:mm');
-      final change = revision.changes['Zeitpunkt des Eintrags']!;
-      expect(
-        formatRevisionTimestamp(change.before, date),
-        '14.09.2026, 08:00 (UTC-04:00)',
-      );
-      expect(
-        formatRevisionTimestamp(change.after, date),
-        '15.09.2026, 13:00 (UTC+00:00)',
-      );
-      expect(
-        formatRevisionTimestamp('2026-09-14T08:00:00', date),
-        '14.09.2026, 08:00',
-      );
+      expect(changed.capturedAt, nextTime);
+      expect(changed.timezoneOffsetMinutes, 0);
+      expect(await readings.loadRevisions(old.id), isEmpty);
     },
   );
 

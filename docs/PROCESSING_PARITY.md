@@ -1,5 +1,35 @@
 # Abgleich mit Mein Pflanzenbuch
 
+## Bearbeiten ohne Korrekturverlauf
+
+Seit dem Nutzerauftrag vom 19.09.2026 ersetzt einfaches Bearbeiten und Speichern
+in dieser App den früher übernommenen Korrekturablauf. Diese Änderung gilt
+auch für die unten dokumentierten älteren Übernahmestände.
+
+Die Verlauf-Card, Vorher-/Nachher-Fotos beziehungsweise PDFs, Korrekturgrund
+und Protokollierungshinweise entfallen. Die normale Eintragsliste bleibt
+bestehen. Fotoauswahl, Entwürfe, Sortierung, Erinnerungen und aktuelle
+PDF-Berichte bleiben verfügbar.
+
+`MeterReadingService.update` benötigt keinen Grund und speichert mit `save`
+ohne neue Revision. Aktuelle Anhänge werden bei Änderungen nicht als neue
+historische Versionen gesammelt. Bestehende historische Listen und Revisionen
+bleiben erhalten. Wird ein aktueller Anhang noch von einer alten Revision
+referenziert, bleibt auch seine Metadatenzuordnung erhalten. Alte Foto-Revisionen
+mit SHA-256 statt IDs werden ebenfalls berücksichtigt.
+
+Entfernte Dateien und Foto-Caches werden erst nach erfolgreichem Speichern
+und Prüfung verbleibender Referenzen bereinigt. Bei Fehlern bleibt eine
+verwaiste Datei gegebenenfalls liegen, ohne den gespeicherten Eintrag oder
+seine neuen Anhänge zu verwerfen. Es erfolgt keine pauschale Altdatei-Bereinigung.
+Schema, Backupversion und eingefrorene Quellhashes bleiben unverändert.
+Legacy-Revisionen werden weiterhin gesichert und wiederhergestellt.
+
+`editing_without_history_test.dart` prüft Änderungen ohne neue Revision,
+Erhalt alter ID-/Hash-Referenzen, geteilte Dateipfade sowie Speicher- und
+Bereinigungsfehler. Die bisherigen Ablaufprüfungen erwarten jetzt den aktuellen
+Stand. Legacy-Backupprüfungen verwenden ausdrücklich gespeicherte Altversionen.
+
 Direkte Vorlage ist Pflanzenbuch-Commit
 `0fa2f85d26047f1f22ef6fae17cf93d000ca66e3`. Fahrzeugakte enthält eine unabhängige
 Kopie seiner versionierten Flutter- und Plattformquellen. Interne Meter- und

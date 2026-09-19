@@ -342,7 +342,6 @@ class ReadingPhotoEditor extends StatelessWidget {
     required this.onRemove,
     this.onReorder,
     this.progress = '',
-    this.correction = false,
   });
   final List<ReadingPhotoVersion> photos;
   final bool busy;
@@ -352,7 +351,6 @@ class ReadingPhotoEditor extends StatelessWidget {
   final ValueChanged<ReadingPhotoVersion> onRemove;
   final ValueChanged<List<String>>? onReorder;
   final String progress;
-  final bool correction;
 
   @override
   Widget build(BuildContext context) => Card(
@@ -406,12 +404,6 @@ class ReadingPhotoEditor extends StatelessWidget {
             Text(
               progress.isEmpty ? 'Fotos werden vorbereitet …' : progress,
               textAlign: TextAlign.center,
-            ),
-          ],
-          if (correction) ...[
-            const SizedBox(height: 10),
-            const Text(
-              'Ersetzte und entfernte Fotos bleiben nach dem Speichern im Korrekturverlauf erhalten.',
             ),
           ],
         ],

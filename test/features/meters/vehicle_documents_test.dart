@@ -17,7 +17,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test(
-    'vehicle fields and original/current PDFs survive revisions and encrypted restore',
+    'vehicle fields and legacy PDF references survive edits and encrypted restore',
     () async {
       final root = await Directory.systemTemp.createTemp('vehicle_documents_');
       addTearDown(() => root.delete(recursive: true));
@@ -90,12 +90,24 @@ void main() {
         documents: [invoice, report],
         note: 'Ölwechsel',
       );
+      // Simulate a revision from an older app version. New edits must retain it.
+      final legacyRevision = ReadingRevision(
+        id: 'legacy-documents',
+        readingId: original.id,
+        changedAt: DateTime.utc(2026, 8),
+        reason: 'Bestandsdaten',
+        changes: const {},
+        documentChange: ReadingPhotoChange(
+          beforeIds: const [],
+          afterIds: [invoice.id, report.id],
+        ),
+      );
+      await readings.saveRevision(legacyRevision);
       final changed = await service.update(
         existing: original,
         value: original.value,
         capturedAt: original.capturedAt,
         note: original.note,
-        reason: 'Rechnung korrigiert',
         documents: [report, replacement],
         workshop: 'Musterwerkstatt Nord',
         costCents: 21990,
@@ -107,13 +119,8 @@ void main() {
       ]);
       expect((await readings.findById(changed.id))!.toJson(), changed.toJson());
       final revision = (await readings.loadRevisions(changed.id)).single;
-      expect(revision.documentChange!.beforeIds, ['invoice', 'report']);
-      expect(revision.documentChange!.afterIds, [
-        'report',
-        'invoice-corrected',
-      ]);
-      expect(revision.changes['Kosten']!.after, '219,90 €');
-      expect(revision.changes['Werkstatt']!.after, 'Musterwerkstatt Nord');
+      expect(revision.toJson(), legacyRevision.toJson());
+      expect(await File(invoice.path).exists(), isTrue);
       expect(
         await integrity.readingManifestHash(changed),
         changed.manifestSha256,
@@ -177,13 +184,18 @@ void main() {
         value: changed.value,
         capturedAt: changed.capturedAt,
         note: changed.note,
-        reason: '',
         clearCost: true,
         documents: [],
       );
       expect(cleared.costCents, isNull);
       expect(cleared.documents, isEmpty);
-      expect(cleared.documentHistory, hasLength(3));
+      expect(cleared.documentHistory.map((d) => d.id), ['invoice', 'report']);
+      expect(await File(report.path).exists(), isTrue);
+      expect(await File(replacement.path).exists(), isFalse);
+      expect(
+        (await readings.loadRevisions(original.id)).single.toJson(),
+        legacyRevision.toJson(),
+      );
     },
   );
 

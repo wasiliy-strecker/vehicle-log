@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fahrzeugakte/app/app_providers.dart';
 import 'package:fahrzeugakte/core/integrity/integrity_copy.dart';
-import 'package:fahrzeugakte/core/utils/formatters.dart';
 import 'package:fahrzeugakte/features/evidence/application/evidence_report_service.dart';
 import 'package:fahrzeugakte/features/evidence/domain/evidence_export.dart';
 import 'package:fahrzeugakte/features/meters/domain/meter.dart';
@@ -20,7 +19,7 @@ void main() {
   const unchangedReadingManifest = 'unchanged-reading-manifest';
 
   testWidgets(
-    'hides OCR and hash diagnostics and explains empty correction history',
+    'hides correction history and diagnostics while retaining PDF actions',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(430, 1200));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -50,16 +49,8 @@ void main() {
       expect(find.text('OCR-Konfidenz'), findsNothing);
       expect(find.text('Manuell abweichend'), findsNothing);
 
-      await tester.scrollUntilVisible(
-        find.text(correctionHistoryTitle),
-        250,
-        scrollable: scrollable,
-      );
-      expect(find.text(correctionHistoryText), findsOneWidget);
-      expect(
-        find.text('Für diesen Eintrag gibt es noch keine Korrekturen.'),
-        findsOneWidget,
-      );
+      expect(find.text('Korrekturverlauf'), findsNothing);
+      expect(find.textContaining('noch keine Korrekturen'), findsNothing);
       expect(find.textContaining('Schutz vor nachträglichen'), findsNothing);
       expect(find.text('Technische Prüfwerte anzeigen'), findsNothing);
       expect(find.textContaining('SHA-256'), findsNothing);
@@ -83,182 +74,121 @@ void main() {
     },
   );
 
-  testWidgets('shows correction reason and newest changes first', (
-    tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(430, 1600));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    final reading = _reading();
-    final olderChange = DateTime.utc(2026, 9, 3, 8);
-    final newerChange = DateTime.utc(2026, 9, 4, 9);
-    final readings = MemoryReadingRepository()
-      ..items[reading.id] = reading
-      ..revisions[reading.id] = [
-        ReadingRevision(
-          id: 'revision_older',
-          readingId: reading.id,
-          changedAt: olderChange,
-          reason: 'Zahlendreher berichtigt',
-          changes: const {
-            'Kilometerstand': ReadingChange(before: '24,1', after: '42,1'),
-          },
-        ),
-        ReadingRevision(
-          id: 'revision_newer',
-          readingId: reading.id,
-          changedAt: newerChange,
-          reason: 'Unscharfes Foto ausgetauscht',
-          changes: {
-            'Prüfwert des Fotos (SHA-256)': ReadingChange(
-              before: 'c' * 64,
-              after: 'd' * 64,
-            ),
-            'OCR-Kandidat': const ReadingChange(before: '24,1', after: '42,1'),
-          },
-        ),
-      ];
+  testWidgets(
+    'keeps legacy revisions stored without showing a correction history',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(430, 1600));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final reading = _reading();
+      final olderChange = DateTime.utc(2026, 9, 3, 8);
+      final newerChange = DateTime.utc(2026, 9, 4, 9);
+      final readings = MemoryReadingRepository()
+        ..items[reading.id] = reading
+        ..revisions[reading.id] = [
+          ReadingRevision(
+            id: 'revision_older',
+            readingId: reading.id,
+            changedAt: olderChange,
+            reason: 'Zahlendreher berichtigt',
+            changes: const {
+              'Kilometerstand': ReadingChange(before: '24,1', after: '42,1'),
+            },
+          ),
+          ReadingRevision(
+            id: 'revision_newer',
+            readingId: reading.id,
+            changedAt: newerChange,
+            reason: 'Unscharfes Foto ausgetauscht',
+            changes: {
+              'Prüfwert des Fotos (SHA-256)': ReadingChange(
+                before: 'c' * 64,
+                after: 'd' * 64,
+              ),
+              'OCR-Kandidat': const ReadingChange(
+                before: '24,1',
+                after: '42,1',
+              ),
+            },
+          ),
+        ];
 
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          meterReadingRepositoryProvider.overrideWithValue(readings),
-          evidenceExportRepositoryProvider.overrideWithValue(
-            MemoryEvidenceExportRepository(),
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            meterReadingRepositoryProvider.overrideWithValue(readings),
+            evidenceExportRepositoryProvider.overrideWithValue(
+              MemoryEvidenceExportRepository(),
+            ),
+          ],
+          child: MaterialApp(home: ReadingDetailScreen(readingId: reading.id)),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Korrekturverlauf'), findsNothing);
+      expect(find.textContaining('Korrektur vom'), findsNothing);
+      expect(find.textContaining('Grund:'), findsNothing);
+      expect(find.text('Vorher:'), findsNothing);
+      expect(find.text('Neu:'), findsNothing);
+      expect(readings.revisions[reading.id], hasLength(2));
+    },
+  );
+
+  testWidgets(
+    'shows current photos and preserves hidden legacy photo versions',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(430, 1800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final reading = _reading(
+        photoHistory: [
+          ReadingPhotoVersion(
+            id: 'original_photo',
+            path: '/tmp/original.jpg',
+            sha256: 'c' * 64,
+            source: ReadingSource.gallery,
+            addedAt: DateTime.utc(2026, 9, 1, 10),
+            ocrRawText: '41,9',
+            ocrCandidate: '41,9',
           ),
         ],
-        child: MaterialApp(home: ReadingDetailScreen(readingId: reading.id)),
-      ),
-    );
-    await tester.pumpAndSettle();
-    final scrollable = find
-        .descendant(
-          of: find.byType(ListView),
-          matching: find.byType(Scrollable),
-        )
-        .first;
-    await tester.scrollUntilVisible(
-      find.text(correctionHistoryTitle),
-      250,
-      scrollable: scrollable,
-    );
-
-    final newerTitle = find.text(
-      'Korrektur vom ${formatDateTime(newerChange)}',
-    );
-    final olderTitle = find.text(
-      'Korrektur vom ${formatDateTime(olderChange)}',
-    );
-    expect(newerTitle, findsOneWidget);
-    expect(olderTitle, findsOneWidget);
-    expect(
-      tester.getTopLeft(newerTitle).dy,
-      lessThan(tester.getTopLeft(olderTitle).dy),
-    );
-    expect(find.text('Grund: Unscharfes Foto ausgetauscht'), findsOneWidget);
-    expect(find.text('Grund: Zahlendreher berichtigt'), findsOneWidget);
-    expect(find.text('Vorher:'), findsOneWidget);
-    expect(find.text('Neu:'), findsOneWidget);
-    expect(find.text('24,1 m³'), findsOneWidget);
-    expect(find.text('42,1 m³'), findsWidgets);
-    expect(find.text('Fahrzeugfoto geändert'), findsOneWidget);
-    expect(find.text('OCR-Kandidat'), findsNothing);
-    expect(find.textContaining('c' * 64), findsNothing);
-    expect(find.textContaining('d' * 64), findsNothing);
-  });
-
-  testWidgets('shows correction photo and expands its previous photo', (
-    tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(430, 1800));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    final reading = _reading(
-      photoHistory: [
-        ReadingPhotoVersion(
-          id: 'original_photo',
-          path: '/tmp/original.jpg',
-          sha256: 'c' * 64,
-          source: ReadingSource.gallery,
-          addedAt: DateTime.utc(2026, 9, 1, 10),
-          ocrRawText: '41,9',
-          ocrCandidate: '41,9',
-        ),
-      ],
-    );
-    final readings = MemoryReadingRepository()
-      ..items[reading.id] = reading
-      ..revisions[reading.id] = [
-        ReadingRevision(
-          id: 'revision_photo',
-          readingId: reading.id,
-          changedAt: reading.effectivePhotoAddedAt,
-          reason: 'Foto war unscharf',
-          changes: {
-            'Prüfwert des Fotos (SHA-256)': ReadingChange(
-              before: 'c' * 64,
-              after: 'a' * 64,
-            ),
-          },
-        ),
-      ];
-
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          meterReadingRepositoryProvider.overrideWithValue(readings),
-          evidenceExportRepositoryProvider.overrideWithValue(
-            MemoryEvidenceExportRepository(),
+      );
+      final readings = MemoryReadingRepository()
+        ..items[reading.id] = reading
+        ..revisions[reading.id] = [
+          ReadingRevision(
+            id: 'revision_photo',
+            readingId: reading.id,
+            changedAt: reading.effectivePhotoAddedAt,
+            reason: 'Foto war unscharf',
+            changes: {
+              'Prüfwert des Fotos (SHA-256)': ReadingChange(
+                before: 'c' * 64,
+                after: 'a' * 64,
+              ),
+            },
           ),
-        ],
-        child: MaterialApp(home: ReadingDetailScreen(readingId: reading.id)),
-      ),
-    );
-    await tester.pumpAndSettle();
+        ];
 
-    final scrollable = find
-        .descendant(
-          of: find.byType(ListView),
-          matching: find.byType(Scrollable),
-        )
-        .first;
-    await tester.scrollUntilVisible(
-      find.text('Neues Foto'),
-      250,
-      scrollable: scrollable,
-    );
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            meterReadingRepositoryProvider.overrideWithValue(readings),
+            evidenceExportRepositoryProvider.overrideWithValue(
+              MemoryEvidenceExportRepository(),
+            ),
+          ],
+          child: MaterialApp(home: ReadingDetailScreen(readingId: reading.id)),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.textContaining('Frühere Fotos'), findsNothing);
-    expect(
-      find.bySemanticsLabel('Neues Foto der Korrektur revision_photo'),
-      findsOneWidget,
-    );
-    expect(
-      find.bySemanticsLabel('Vorheriges Foto der Korrektur revision_photo'),
-      findsNothing,
-    );
-
-    final previousPhotoTile = find.widgetWithText(
-      ExpansionTile,
-      'Vorheriges Foto anzeigen',
-    );
-    final tile = tester.widget<ExpansionTile>(previousPhotoTile);
-    expect((tile.shape as RoundedRectangleBorder).side.style, BorderStyle.none);
-    expect(
-      (tile.collapsedShape as RoundedRectangleBorder).side.style,
-      BorderStyle.none,
-    );
-
-    await tester.scrollUntilVisible(
-      find.text('Vorheriges Foto anzeigen'),
-      250,
-      scrollable: scrollable,
-    );
-    await tester.tap(find.text('Vorheriges Foto anzeigen'));
-    await tester.pumpAndSettle();
-    expect(
-      find.bySemanticsLabel('Vorheriges Foto der Korrektur revision_photo'),
-      findsOneWidget,
-    );
-  });
+      expect(find.text('Aktuelle Fotos (1)'), findsOneWidget);
+      expect(find.text('Vorheriges Foto anzeigen'), findsNothing);
+      expect(find.text('Neues Foto'), findsNothing);
+      expect(find.text('Korrekturverlauf'), findsNothing);
+      expect(readings.items[reading.id]!.photoHistory, hasLength(1));
+      expect(readings.revisions[reading.id], hasLength(1));
+    },
+  );
 
   testWidgets('single PDF action immediately shows indeterminate progress', (
     tester,

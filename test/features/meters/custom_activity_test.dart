@@ -149,7 +149,6 @@ void main() {
             value: created.value,
             capturedAt: created.capturedAt,
             note: created.note,
-            reason: 'Bezeichnung präzisiert',
             customActivityLabel: 'Blätter besprüht',
           );
           final loaded = (await readings.findById(created.id))!;
@@ -162,11 +161,7 @@ void main() {
           expect(loaded.value.displayText, measured ? '42' : '0');
           expect(loaded.hasPhoto, withPhotos);
           expect(loaded.meter.unit, 'mm');
-          final revision = (await readings.loadRevisions(created.id)).single;
-          expect(revision.changes.keys, ['Aktivität']);
-          expect(revision.changes['Aktivität']!.before, 'Erste Blüte');
-          expect(revision.changes['Aktivität']!.after, 'Blätter besprüht');
-          expect(revision.photoChange, isNull);
+          expect(await readings.loadRevisions(created.id), isEmpty);
           expect(
             (await DriftMeterDashboardRepository(
               db,
@@ -211,10 +206,7 @@ void main() {
             await integrity.readingManifestHash(restored),
             loaded.manifestSha256,
           );
-          expect(
-            (await restoredReadings.loadRevisions(created.id)).single.toJson(),
-            revision.toJson(),
-          );
+          expect(await restoredReadings.loadRevisions(created.id), isEmpty);
           expect(
             await restoredReadings.watchActivitySuggestions().first,
             contains('Blätter besprüht'),
@@ -224,7 +216,6 @@ void main() {
             value: corrected.value,
             capturedAt: corrected.capturedAt,
             note: corrected.note,
-            reason: '',
             activity: CareActivity.watering,
           );
           expect(standard.activityLabel, 'Wartung');
@@ -240,7 +231,6 @@ void main() {
               value: standard.value,
               capturedAt: standard.capturedAt,
               note: standard.note,
-              reason: '',
               activity: CareActivity.custom,
               customActivityLabel: '  ',
             ),

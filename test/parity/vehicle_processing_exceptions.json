@@ -88,12 +88,14 @@
     "lib/core/integrity/integrity_copy.dart": {
       "sourceSha256": "1c0b1859b75d6522fe4758db9057afe191388c0c85cf44dfda63fb982f8775e2",
       "localPath": "lib/core/integrity/integrity_copy.dart",
-      "localSha256": "1bb1b17e7143f331111e72515606609504b95237bf2ae7c37a9a20d92058ceda",
-      "reason": "Vehicle report labels, additional metadata and attachment-aware export choices. Full PDF exports append original PDF pages after each entry with separators and validate completeness. Compact exports list filenames. Existing photo layout is retained.",
+      "localSha256": "0ab34ef775834b9658a8470b81adda25485b3c654c6cd26c498bccfcaad1c123",
+      "reason": "Vehicle report labels, additional metadata and attachment-aware export choices. Full PDF exports append original PDF pages after each entry with separators and validate completeness. Compact exports list filenames. Existing photo layout is retained. Explicit user request removes correction-history UI and new revisions. Normal edits preserve legacy references and clean only unreferenced removed attachments after saving.",
       "tests": [
         "test/features/evidence/vehicle_pdf_attachments_test.dart",
         "test/features/evidence/evidence_report_service_test.dart",
-        "test/features/meters/capture_reading_screen_test.dart"
+        "test/features/meters/capture_reading_screen_test.dart",
+        "test/features/meters/editing_without_history_test.dart",
+        "test/features/meters/reading_evidence_explanation_test.dart"
       ]
     },
     "lib/core/files/photo_draft_store.dart": {
@@ -231,12 +233,14 @@
     "lib/features/meters/application/meter_services.dart": {
       "sourceSha256": "fc81020bb66937ec6be998b73ac76638c8c59862bd6c2faff00e4bd5a6ac28b1",
       "localPath": "lib/features/meters/application/meter_services.dart",
-      "localSha256": "d2e15824b49055dc16929e4ff89fef22979bcf0b82fabc1da3a9ae6ef1f1f758",
-      "reason": "Vehicle labels and km defaults, optional vehicle/entry metadata and PDF versioning. Kilometers compare across activities with matching units. Corrections archive removed PDFs, deletion removes their files, and search includes workshop.",
+      "localSha256": "5a7e1411ddbc72397260e5a2cd5b82bfe61dad2fc1c4ec7144bcd484e801bc0b",
+      "reason": "Vehicle labels and km defaults, optional vehicle/entry metadata and PDF versioning. Kilometers compare across activities with matching units. Corrections archive removed PDFs, deletion removes their files, and search includes workshop. Explicit user request removes correction-history UI and new revisions. Normal edits preserve legacy references and clean only unreferenced removed attachments after saving.",
       "tests": [
         "test/features/meters/vehicle_documents_test.dart",
         "test/features/meters/vehicle_entry_screen_test.dart",
-        "test/features/meters/multiple_photos_test.dart"
+        "test/features/meters/multiple_photos_test.dart",
+        "test/features/meters/editing_without_history_test.dart",
+        "test/features/meters/reading_evidence_explanation_test.dart"
       ]
     },
     "lib/features/meters/presentation/meter_visuals.dart": {
@@ -264,13 +268,15 @@
     "lib/features/meters/presentation/edit_reading_screen.dart": {
       "sourceSha256": "c088cde26b89ac984865f0020f90fdedfd0456d653f1fbe47d86613f17804ed1",
       "localPath": "lib/features/meters/presentation/edit_reading_screen.dart",
-      "localSha256": "86a8766140515c1bd32d39b621ad3c24384972b9e5ba529efbd44c1364c4267e",
-      "reason": "Vehicle forms/details with optional VIN, registration, workshop, costs and ordered PDFs alongside existing photos. Draft recovery, corrections and attachment-aware report actions retain the established routes.",
+      "localSha256": "ce60bf26317e3e8824ec67300c6b54c120e4d8590978e8f13993b942b811c273",
+      "reason": "Vehicle forms/details with optional VIN, registration, workshop, costs and ordered PDFs alongside existing photos. Draft recovery, corrections and attachment-aware report actions retain the established routes. Explicit user request removes correction-history UI and new revisions. Normal edits preserve legacy references and clean only unreferenced removed attachments after saving.",
       "tests": [
         "test/features/meters/vehicle_entry_screen_test.dart",
         "test/widget_test.dart",
         "test/features/meters/manual_reading_screen_test.dart",
-        "test/features/meters/document_draft_test.dart"
+        "test/features/meters/document_draft_test.dart",
+        "test/features/meters/editing_without_history_test.dart",
+        "test/features/meters/reading_evidence_explanation_test.dart"
       ]
     },
     "lib/features/meters/presentation/home_screen.dart": {
@@ -310,13 +316,15 @@
     "lib/features/meters/presentation/reading_detail_screen.dart": {
       "sourceSha256": "dd91f6f0f2dd32d63bd920693b35026f1f63eff77b240aba56d680170992dc24",
       "localPath": "lib/features/meters/presentation/reading_detail_screen.dart",
-      "localSha256": "d199ce4b0bc3e377b97b15c157116c58d972a116f0fe414c610df80d43aabfbb",
-      "reason": "Vehicle forms/details with optional VIN, registration, workshop, costs and ordered PDFs alongside existing photos. Draft recovery, corrections and attachment-aware report actions retain the established routes.",
+      "localSha256": "fc620ffe76330fe225350aa9aebb6c2216c3b7fd5a355d284b09c37897adc6e6",
+      "reason": "Vehicle forms/details with optional VIN, registration, workshop, costs and ordered PDFs alongside existing photos. Draft recovery, corrections and attachment-aware report actions retain the established routes. Explicit user request removes correction-history UI and new revisions. Normal edits preserve legacy references and clean only unreferenced removed attachments after saving.",
       "tests": [
         "test/features/meters/vehicle_entry_screen_test.dart",
         "test/widget_test.dart",
         "test/features/meters/manual_reading_screen_test.dart",
-        "test/features/meters/document_draft_test.dart"
+        "test/features/meters/document_draft_test.dart",
+        "test/features/meters/editing_without_history_test.dart",
+        "test/features/meters/reading_evidence_explanation_test.dart"
       ]
     },
     "lib/features/meters/presentation/meter_detail_screen.dart": {
@@ -481,6 +489,15 @@
       "tests": [
         "android/app/src/test/kotlin/com/appfactory/vehicle_log/ReminderAndroidTest.kt",
         "test/tooling/build_internal_test_aab_test.dart"
+      ]
+    },
+    "lib/features/meters/presentation/reading_photo_gallery.dart": {
+      "sourceSha256": "20cbfbcd68e719ab7c3499d4dbf29ef288621af29f5e3638c61d9133f8def5bb",
+      "localSha256": "b47cd2d85febcbb0f4b5595f0e2bfa3e5bae51ab91e5e8c6cf85731fc00bc7ae",
+      "reason": "Explicit user request removes correction-history UI and new revisions. Normal edits preserve legacy references and clean only unreferenced removed attachments after saving.",
+      "tests": [
+        "test/features/meters/editing_without_history_test.dart",
+        "test/features/meters/reading_evidence_explanation_test.dart"
       ]
     }
   }
