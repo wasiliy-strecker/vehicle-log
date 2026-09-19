@@ -9,7 +9,10 @@ folgen dieser Vorlage. Stahlblau und Anthrazit geben der App eine eigene Optik.
 ## Fahrzeuge und Einträge
 
 Fahrzeuge haben einen Namen, eine Fahrzeugart und eine Einheit, standardmäßig
-km. Kennzeichen, Marke/Modell, FIN und Erstzulassung (MM.JJJJ) sind optional.
+km. Kennzeichen, Marke/Modell, FIN und Erstzulassung sind optional. Die
+Erstzulassung wird im Datumspicker mit Jahresauswahl zuerst gewählt und als
+TT.MM.JJJJ angezeigt. Vorhandene Monat-/Jahr-Angaben bleiben unverändert,
+bis ein neues Datum gewählt wird. Die Angabe lässt sich im Feld entfernen.
 Einträge verlangen eine Aktivität. Wartung, Reparatur, HU/AU und Kilometerstand
 werden vorgeschlagen. Eigene Begriffe werden wie in der Vorlage gespeichert
 und erneut vorgeschlagen. Kilometerstand, Werkstatt, Kosten in Euro, Notiz,

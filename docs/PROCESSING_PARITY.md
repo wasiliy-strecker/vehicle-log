@@ -67,3 +67,14 @@ zusätzlich über `vehicle_documents_test.dart`, `vehicle_entry_screen_test.dart
 `document_scanner_test.dart` und `vehicle_pdf_attachments_test.dart` geprüft.
 Die PDF-Prüfung verwendet echte mehrseitige PDFs und kontrolliert Inhalt,
 Seitenreihenfolge, Querformat und unveränderte Originaldateien.
+
+## Datumsauswahl für die Erstzulassung
+
+Die Erstzulassung öffnet auf Wunsch des Nutzers einen Kalender mit
+Jahresauswahl zuerst. Ein bestätigtes Datum wird als TT.MM.JJJJ gespeichert.
+Das Feld bleibt optional und kann geleert werden. Bestehende MM.JJJJ-Angaben
+werden nicht beim Öffnen oder bei Änderungen anderer Fahrzeugfelder umgeschrieben.
+Abbrechen erhält den bisherigen Wert. Datenbank, Backups und PDF-Ausgabe
+verwenden weiterhin dasselbe Textfeld. Es ist keine Migration erforderlich.
+`first_registration_picker_test.dart` prüft Auswahl, Abbruch, Entfernen,
+Speichern und die Verträglichkeit mit bisherigen Monatsangaben.

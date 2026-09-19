@@ -16,6 +16,7 @@ import '../domain/meter.dart';
 import '../domain/meter_reading.dart';
 import 'meter_unit_field.dart';
 import 'reminder_delivery_hint.dart';
+import 'first_registration_field.dart';
 
 typedef _MeterFormSnapshot = ({
   MeterType type,
@@ -299,21 +300,9 @@ class _MeterFormState extends ConsumerState<_MeterForm>
                 textInputAction: TextInputAction.next,
               ),
               const SizedBox(height: 14),
-              TextFormField(
+              FirstRegistrationField(
                 controller: _firstRegistration,
-                decoration: const InputDecoration(
-                  labelText: 'Erstzulassung (optional)',
-                  hintText: 'MM.JJJJ',
-                ),
-                keyboardType: TextInputType.datetime,
-                textInputAction: TextInputAction.next,
-                validator: (value) =>
-                    (value ?? '').trim().isEmpty ||
-                        RegExp(
-                          r'^(0[1-9]|1[0-2])\.[12][0-9]{3}$',
-                        ).hasMatch(value!.trim())
-                    ? null
-                    : 'Bitte Monat und Jahr als MM.JJJJ angeben.',
+                enabled: !_saving,
               ),
               const SizedBox(height: 14),
               MeterUnitField(
@@ -783,13 +772,9 @@ class _MeterFormState extends ConsumerState<_MeterForm>
   Future<void> _save() async {
     if (_saving || !_formKey.currentState!.validate()) return;
     // Validate controller values even when the long form has unmounted a field.
-    final registration = _firstRegistration.text.trim();
     final error = _label.text.trim().isEmpty
         ? 'Bitte einen Fahrzeugnamen eingeben.'
-        : registration.isNotEmpty &&
-              !RegExp(r'^(0[1-9]|1[0-2])\.[12][0-9]{3}$').hasMatch(registration)
-        ? 'Bitte Monat und Jahr als MM.JJJJ angeben.'
-        : null;
+        : firstRegistrationError(_firstRegistration.text);
     if (error != null) {
       ScaffoldMessenger.of(context).showSnackBar(AppSnackBar(message: error));
       return;

@@ -287,13 +287,14 @@
     "lib/features/meters/presentation/meter_form_screen.dart": {
       "sourceSha256": "8ef9ccac3156c855d114f3995776882525e3fbf8ae19c4300045fb7133966e1c",
       "localPath": "lib/features/meters/presentation/meter_form_screen.dart",
-      "localSha256": "d3b5dff98aa3140004b09ffb2790eb78f17fa83401af3992e6cae41ee67fdaf5",
-      "reason": "Vehicle forms/details with optional VIN, registration, workshop, costs and ordered PDFs alongside existing photos. Draft recovery, corrections and attachment-aware report actions retain the established routes.",
+      "localSha256": "02acb023c58a1a1fdc9cabb9238a7bf5736fad50ffb773f4fb79e9508c08f03d",
+      "reason": "Vehicle forms/details with optional VIN, registration, workshop, costs and ordered PDFs alongside existing photos. Draft recovery, corrections and attachment-aware report actions retain the established routes. First registration uses a year-first calendar picker with optional clearing. Existing month/year strings remain unchanged unless a new date is confirmed.",
       "tests": [
         "test/features/meters/vehicle_entry_screen_test.dart",
         "test/widget_test.dart",
         "test/features/meters/manual_reading_screen_test.dart",
-        "test/features/meters/document_draft_test.dart"
+        "test/features/meters/document_draft_test.dart",
+        "test/features/meters/first_registration_picker_test.dart"
       ]
     },
     "lib/features/meters/presentation/reminder_delivery_hint.dart": {
