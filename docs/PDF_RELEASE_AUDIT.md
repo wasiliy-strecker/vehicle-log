@@ -12,12 +12,40 @@ Es gibt noch keine uneingeschränkte Store-Release-Freigabe. Die Store-Signierun
 ist nicht eingerichtet und `android/key.properties` fehlt. Ein signiertes
 Store-AAB wurde weder erstellt noch geprüft.
 
-Auf Nutzerwunsch wurden keine App-Oberfläche, kein Browser und kein
-Android-Emulator für diese Prüfung gestartet. Es wurden keine Screenshots
+Bei der ursprünglichen Prüfung wurden auf Nutzerwunsch keine App-Oberfläche,
+kein Browser und kein Android-Emulator gestartet. Es wurden keine Screenshots
 oder visuellen PDF-Prüfungen durchgeführt. Flutter-Tests laufen im
 Testprozess. Native Tests laufen auf der JVM, bestehende Android-API-Tests
 mit Robolectric. Das ist kein Lauf des Google-Scanners auf einem Gerät.
 Installierte Apps und ihre Daten wurden nicht verändert.
+
+## Nachprüfung und Dev-Update am 20.09.2026
+
+Auf erneuten Nutzerauftrag wurde Commit `fb6bc58` nochmals geprüft.
+Formatter und Analyzer sind ohne Befund. Alle 742 Flutter-Tests mit
+PDF-Inhaltsprüfung und alle 31 erneut ausgeführten nativen JVM-Tests bestehen.
+Es waren keine weiteren Codeänderungen erforderlich.
+
+Wegen der nativen Scanner-Korrektur und des ausdrücklichen Update-Auftrags
+wurde die Dev-APK neu gebaut und um 08:47 CEST auf dem angeschlossenen
+Android-16-Gerät installiert. Paket `com.appfactory.vehicle_log.dev`,
+Version `1.0.0+1`, Dev-Label, Debug-Flag und Installer wurden geprüft.
+Die Signatur stimmt mit der vorhandenen Installation überein. Das Update
+verwendete `adb install -r -t -g --no-streaming`. Die erste Installationszeit
+blieb unverändert. Die Datenbank ist weiterhin vorhanden und alle zwölf
+gespeicherten Anhangsdateien haben unveränderte Prüfsummen.
+
+Die installierte APK stimmt bytegenau mit dem geprüften Build überein.
+Die native Scanner-Sperre und ihr Dart-Kanal sind enthalten. Alle drei ABIs,
+die ELF-Ausrichtung sämtlicher 64-Bit-Bibliotheken und ZIP-Ausrichtung sind
+erneut geprüft. APK-SHA-256:
+`630e959cae6a79e5571922b46523821edfb0fa040803068641b7b4b343085042`.
+
+Die App wurde erfolgreich gestartet. Der laufende Prozess zeigt keine
+Flutter-Fehler, unbehandelten Exceptions oder nativen Absturzmeldungen in
+den geprüften Startprotokollen. Es gab keine visuellen Tests, keinen Emulator
+und keine interaktive Scanner-Prüfung. Die Dev-Aktualisierung ersetzt daher
+nicht die weiter unten beschriebenen Geräte- und Store-Freigabeprüfungen.
 
 ## Behobene Fehler
 
@@ -123,7 +151,7 @@ aktuellen Android-Versionen und Geräten mit 16-KB-Seiten muss anhand einer
 festgelegten Gerätematrix bestätigt werden. Große bildbasierte PDFs brauchen
 zusätzlich einen Speichertest auf einem Gerät mit wenig RAM.
 
-Diese interaktiven oder gerätebezogenen Prüfungen wurden nicht vorweggenommen.
+Diese interaktiven Scanner- und Emulatorprüfungen wurden nicht vorweggenommen.
 Sie benötigen gemäß Nutzerauftrag eine vorherige Rückfrage. Die neue native
-Scanner-Absicherung benötigt für einen späteren Gerätetest eine neue Dev-APK.
-Ein Hot Reload allein aktualisiert diesen Kotlin-Code nicht.
+Scanner-Absicherung wurde mit dem oben dokumentierten autorisierten
+Dev-Update ausgeliefert. Ein Hot Reload allein aktualisiert Kotlin-Code nicht.
