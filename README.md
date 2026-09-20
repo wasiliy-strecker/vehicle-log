@@ -118,6 +118,10 @@ Native Erinnerungstests: im Verzeichnis `android/` mit vollständigem JDK
 Die app-eigene Store-Signierung ist lokal eingerichtet. Upload und Veröffentlichung erfolgen separat.
 Der spätere Ablauf steht in [ANDROID_RELEASES.md](docs/ANDROID_RELEASES.md).
 
+Die reproduzierbaren [Play-Store-Bilder](scripts/store_assets/README.md) verwenden
+den vorhandenen Store-Release und fiktive Beispieldaten in einem eigenen Emulator.
+Upload-Paket und Gesamtvorschau liegen unter `build/store-assets/de-DE/build-3/`.
+
 Quellcode: [Mozilla Public License 2.0](LICENSE).
 Herkunft: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 Die [Datenschutzerklärung](https://github.com/wasiliy-strecker/vehicle-log/blob/main/PRIVACY.md)

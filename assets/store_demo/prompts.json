@@ -1,0 +1,26 @@
+{
+  "generator": "Built-in image_gen.imagegen",
+  "purpose": "Fictional vehicle attachments for Store screenshots",
+  "images": [
+    {
+      "file": "01_familienauto.png",
+      "prompt": "Use case: photorealistic-natural. Asset type: a synthetic example attachment photo inside a German vehicle maintenance journal, not an app icon and not marketing artwork. Natural believable smartphone photograph, documentary quality, restrained realistic colors, soft daylight, clean European workshop or parking setting. Square image, one clear subject centered with generous framing, no collage, no typography, no visible brand logos, no legible registration plates, no people, no watermark, no cinematic effects. An unbranded dark steel-blue compact family hatchback seen from front three-quarter angle, parked outside a tidy small workshop, whole car visible."
+    },
+    {
+      "file": "02_reifendetail.png",
+      "prompt": "Use case: photorealistic-natural. Asset type: a synthetic example attachment photo inside a German vehicle maintenance journal, not an app icon and not marketing artwork. Natural believable smartphone photograph, documentary quality, restrained realistic colors, soft daylight, clean European workshop or parking setting. Square image, one clear subject centered with generous framing, no collage, no typography, no visible brand logos, no legible registration plates, no people, no watermark, no cinematic effects. Close-up documentary photo of the clean front wheel and tire tread of a dark steel-blue compact hatchback after a tire change. Wheel, tire and a small part of blue fender visible. No readable logos or lettering."
+    },
+    {
+      "file": "03_motorrad.png",
+      "prompt": "Use case: photorealistic-natural. Asset type: a synthetic example attachment photo inside a German vehicle maintenance journal, not an app icon and not marketing artwork. Natural believable smartphone photograph, documentary quality, restrained realistic colors, soft daylight, clean European workshop or parking setting. Square image, one clear subject centered with generous framing, no collage, no typography, no visible brand logos, no legible registration plates, no people, no watermark, no cinematic effects. An unbranded graphite touring motorcycle parked on its side stand on a clean paved courtyard near a garage, side three-quarter view, entire motorcycle visible."
+    },
+    {
+      "file": "04_scooter.png",
+      "prompt": "Use case: photorealistic-natural. Asset type: a synthetic example attachment photo inside a German vehicle maintenance journal, not an app icon and not marketing artwork. Natural believable smartphone photograph, documentary quality, restrained realistic colors, soft daylight, clean European workshop or parking setting. Square image, one clear subject centered with generous framing, no collage, no typography, no visible brand logos, no legible registration plates, no people, no watermark, no cinematic effects. A modern unbranded black electric kick scooter with slim handlebar stem, standing on its kickstand in a quiet paved courtyard. Entire scooter visible. This is a standing electric kick scooter, not a moped."
+    },
+    {
+      "file": "05_lkw.png",
+      "prompt": "Use case: photorealistic-natural. Asset type: a synthetic example attachment photo inside a German vehicle maintenance journal, not an app icon and not marketing artwork. Natural believable smartphone photograph, documentary quality, restrained realistic colors, soft daylight, clean European workshop or parking setting. Square image, one clear subject centered with generous framing, no collage, no typography, no visible brand logos, no legible registration plates, no people, no watermark, no cinematic effects. An unbranded silver-gray medium-duty delivery truck with a white box cargo body, parked in a clean logistics yard, front three-quarter view, whole truck visible, no text or logos on the box."
+    }
+  ]
+}
