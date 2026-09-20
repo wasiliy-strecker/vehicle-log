@@ -20,7 +20,10 @@ Paritätsausnahmen dokumentieren und testen.
 
 Vor Code-Commits dart format lib test, flutter analyze und flutter test ausführen.
 Codegen nur nach Änderungen an Generator-Eingaben. Pro Aufgabe einen Changelog
-unter CODEX/changelog/YYYY/MM/DD anlegen und lokal committen. Nicht pushen.
+unter CODEX/changelog/YYYY/MM/DD anlegen und committen. Auf ausdrücklichen
+Nutzerwunsch vom 20.09.2026 abgeschlossene Änderungen ab jetzt immer auch nach
+origin pushen. Das eigene Repository ist wasiliy-strecker/vehicle-log,
+Standardbranch main. Nach dem Push den entfernten Commit und Arbeitsstand prüfen.
 Keine privaten Dokumente, Schlüssel oder Zugangsdaten einchecken.
 Keine Semikolons in Nutzertexten. Store-Texte als Klartext ohne Listenzeichen.
 
