@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -148,7 +147,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ListTile(
                           key: const ValueKey('open-source-code'),
                           leading: const Icon(Icons.code_rounded),
-                          title: const Text('Codebasis: Mein Pflanzenbuch'),
+                          title: const Text('Quellcode auf GitHub'),
                           subtitle: const Text('Open Source · MPL 2.0'),
                           trailing: const Icon(Icons.open_in_new_rounded),
                           enabled: !_working,
@@ -174,29 +173,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _openPrivacyPolicy() async {
-    final text = await rootBundle.loadString('PRIVACY.md');
-    if (!mounted) return;
-    await showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Datenschutzerklärung'),
-        content: SizedBox(
-          width: 560,
-          child: SingleChildScrollView(child: SelectableText(text)),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Schließen'),
-          ),
-        ],
+    await _openExternalUrl(
+      Uri.parse(
+        'https://github.com/wasiliy-strecker/vehicle-log/blob/main/PRIVACY.md',
       ),
+      'Die Datenschutzerklärung konnte nicht geöffnet werden. Bitte versuche es erneut.',
     );
   }
 
   Future<void> _openSourceCode() async {
     await _openExternalUrl(
-      Uri.parse('https://github.com/wasiliy-strecker/plant-care-log'),
+      Uri.parse('https://github.com/wasiliy-strecker/vehicle-log'),
       'Der Quellcode konnte nicht geöffnet werden. Bitte versuche es erneut.',
     );
   }

@@ -1,5 +1,21 @@
 # Abgleich mit Mein Pflanzenbuch
 
+## Eigene Datenschutzerklärung auf GitHub
+
+Seit dem Nutzerauftrag vom 20.09.2026 öffnet der Datenschutz-Button die eigene
+`vehicle-log/blob/main/PRIVACY.md` im externen Browser oder in der GitHub-App.
+Der Quellcode-Link führt ebenfalls zum eigenen Fahrzeugakte-Repository.
+Die Datenschutz-Card behält Aufbau und Texte der Pflanzenbuch-Vorlage, mit
+Fahrzeugbezug. Die Erklärung übernimmt deren Abschnittsfolge und beschreibt
+zusätzlich die Fahrzeugfelder, PDF-Anhänge und den Android-Dokumentscanner.
+Die frühere lokale Textanzeige und das dafür gebündelte Asset entfallen.
+
+Der vorhandene URL-Launcher behandelt fehlgeschlagene und abgebrochene
+Öffnungsversuche mit einer Meldung. `settings_screen_test.dart` prüft beide
+eigenen Zieladressen sowie falsche Rückgabewerte und Exceptions beim Öffnen.
+Die Backup-Abläufe bleiben unverändert. Nur der lokale Ausnahmehash wird
+aktualisiert, die ursprünglichen Referenzhashes bleiben erhalten.
+
 ## Technische PDF-Releaseprüfung am 20.09.2026
 
 Der Nutzerauftrag zur Prüfung und Fehlerkorrektur autorisiert zusätzliche

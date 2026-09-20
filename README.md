@@ -112,4 +112,6 @@ Der spätere Ablauf steht in [ANDROID_RELEASES.md](docs/ANDROID_RELEASES.md).
 
 Quellcode: [Mozilla Public License 2.0](LICENSE).
 Herkunft: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
-Die [Datenschutzerklärung](PRIVACY.md) ist offline in der App verfügbar.
+Die [Datenschutzerklärung](https://github.com/wasiliy-strecker/vehicle-log/blob/main/PRIVACY.md)
+ist öffentlich im eigenen GitHub-Repository verfügbar. Der Datenschutz-Button
+in den Einstellungen öffnet sie im externen Browser oder in der GitHub-App.

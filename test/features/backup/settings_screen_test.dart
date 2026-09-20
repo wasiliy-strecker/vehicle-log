@@ -13,17 +13,17 @@ import 'package:fahrzeugakte/features/backup/presentation/settings_screen.dart';
 import '../../support/fakes.dart';
 
 void main() {
-  testWidgets('privacy text is bundled and opens without an external website', (
+  testWidgets('privacy button opens the vehicle privacy policy on GitHub', (
     tester,
   ) async {
-    var launches = 0;
+    final openedUris = <Uri>[];
     await tester.pumpWidget(
       ProviderScope(
         child: MaterialApp(
           home: SettingsScreen(
-            externalUrlLauncher: (_) async {
-              launches++;
-              return false;
+            externalUrlLauncher: (uri) async {
+              openedUris.add(uri);
+              return true;
             },
           ),
         ),
@@ -32,23 +32,46 @@ void main() {
     await tester.drag(find.byType(ListView), const Offset(0, -300));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('open-privacy-policy')));
-    await tester.runAsync(
-      () => Future<void>.delayed(const Duration(milliseconds: 100)),
-    );
     await tester.pumpAndSettle();
-    expect(find.byType(SelectableText), findsOneWidget);
-    final privacy = tester
-        .widget<SelectableText>(find.byType(SelectableText))
-        .data!;
-    expect(privacy, contains('Datenschutzerklärung für Fahrzeugakte'));
-    expect(privacy, contains('.fzbackup'));
-    expect(privacy, contains('contact@appfabrik-ai.de'));
-    expect(launches, 0);
-    await tester.tap(find.text('Schließen'));
-    await tester.pumpAndSettle();
-    expect(find.byType(SelectableText), findsNothing);
+    expect(openedUris, [
+      Uri.parse(
+        'https://github.com/wasiliy-strecker/vehicle-log/blob/main/PRIVACY.md',
+      ),
+    ]);
+    expect(find.byType(AlertDialog), findsNothing);
     expect(tester.takeException(), isNull);
   });
+
+  for (final throwsException in [false, true]) {
+    testWidgets(
+      'privacy launch failure shows a helpful message (throws: $throwsException)',
+      (tester) async {
+        await tester.pumpWidget(
+          ProviderScope(
+            child: MaterialApp(
+              home: SettingsScreen(
+                externalUrlLauncher: (_) async {
+                  if (throwsException) throw StateError('No browser available');
+                  return false;
+                },
+              ),
+            ),
+          ),
+        );
+        await tester.drag(find.byType(ListView), const Offset(0, -300));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('open-privacy-policy')));
+        await tester.pump();
+        expect(
+          find.text(
+            'Die Datenschutzerklärung konnte nicht geöffnet werden. Bitte versuche es erneut.',
+          ),
+          findsOneWidget,
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
 
   testWidgets('source code card opens the public GitHub repository', (
     tester,
@@ -73,7 +96,7 @@ void main() {
 
     expect(find.text('Über Fahrzeugakte'), findsOneWidget);
     expect(find.text('Fahrzeugakte 1.0.0'), findsOneWidget);
-    expect(find.text('Codebasis: Mein Pflanzenbuch'), findsOneWidget);
+    expect(find.text('Quellcode auf GitHub'), findsOneWidget);
     expect(find.text('Open Source · MPL 2.0'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('open-source-code')));
@@ -81,7 +104,7 @@ void main() {
 
     expect(
       openedUri,
-      Uri.parse('https://github.com/wasiliy-strecker/plant-care-log'),
+      Uri.parse('https://github.com/wasiliy-strecker/vehicle-log'),
     );
     expect(tester.takeException(), isNull);
   });

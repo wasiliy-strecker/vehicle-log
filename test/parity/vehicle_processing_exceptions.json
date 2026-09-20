@@ -441,8 +441,8 @@
     "lib/features/backup/presentation/settings_screen.dart": {
       "sourceSha256": "45d0742b8b7e6cef3dea5b51f3190793060f0744de26377a4381a0b4fe9b2302",
       "localPath": "lib/features/backup/presentation/settings_screen.dart",
-      "localSha256": "f0fdf8b17b070072eead599bab0cbb22486485fffc134f6f1f39abe633e9b394",
-      "reason": "Vehicle privacy and backup wording and link to the actual Pflanzenbuch source template. No new publication or account flow.",
+      "localSha256": "c67ef7ffcbe21ca8251cbc36250050fa64fe00706fe062efec8475ccc8c0d21e",
+      "reason": "Vehicle privacy and backup wording. The user-requested privacy action and source-code link open the own public vehicle-log repository externally, using the existing launcher and error handling. No change to backup processing.",
       "tests": [
         "test/features/backup/settings_screen_test.dart"
       ]
