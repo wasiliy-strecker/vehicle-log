@@ -1,10 +1,13 @@
 import 'dart:io';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pdf/pdf.dart' as pdf;
 import 'package:pdf/widgets.dart' as pw;
 import 'package:pdfrx/pdfrx.dart';
 import 'package:fahrzeugakte/core/files/document_repository.dart';
+import 'package:fahrzeugakte/core/files/meter_photo_repository.dart';
+import 'package:fahrzeugakte/features/meters/application/meter_services.dart';
 import 'package:fahrzeugakte/features/evidence/application/evidence_report_service.dart';
 import 'package:fahrzeugakte/features/evidence/domain/evidence_export.dart';
 import 'package:fahrzeugakte/features/meters/domain/meter_reading.dart';
@@ -46,6 +49,70 @@ void main() {
     }
     return File('${root.path}/$name.pdf')..writeAsBytesSync(await doc.save());
   }
+
+  test(
+    'PDF multi-selection keeps valid files and reports each rejected file',
+    () async {
+      const picker = MethodChannel('miguelruivo.flutter.plugins.filepicker');
+      addTearDown(
+        () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(picker, null),
+      );
+      final a = await source('selected_a', ['SELECTED_A']);
+      final b = await source('selected_b', ['SELECTED_B']);
+      final broken = File('${root.path}/broken.pdf')
+        ..writeAsStringSync('broken');
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(picker, (call) async {
+            expect(call.method, 'custom');
+            expect(call.arguments['allowedExtensions'], ['pdf']);
+            expect(call.arguments['withData'], isFalse);
+            expect(call.arguments['allowMultipleSelection'], isTrue);
+            return [
+              {'name': 'Beleg A.pdf', 'path': a.path, 'size': a.lengthSync()},
+              {
+                'name': 'kaputt.pdf',
+                'path': broken.path,
+                'size': broken.lengthSync(),
+              },
+              {'name': 'Beleg B.PDF', 'path': b.path, 'size': b.lengthSync()},
+              {'name': 'nicht-lokal.pdf', 'path': null, 'size': 1},
+            ];
+          });
+      final repository = LocalDocumentRepository(
+        directoryProvider: () async => root,
+      );
+      final result = await repository.pick();
+      expect(result.documents.map((d) => d.fileName), [
+        'Beleg A.pdf',
+        'Beleg B.PDF',
+      ]);
+      expect(result.failures, hasLength(2));
+      expect(result.failures[0], contains('kaputt.pdf'));
+      expect(result.failures[1], contains('nicht-lokal.pdf'));
+      expect(
+        Directory('${root.path}/vehicle_documents').listSync(),
+        hasLength(2),
+      );
+      expect(
+        await File(result.documents.first.path).readAsBytes(),
+        await a.readAsBytes(),
+      );
+
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(picker, (call) async {
+            expect(call.arguments['allowMultipleSelection'], isFalse);
+            return null;
+          });
+      final cancelled = await repository.pick(multiple: false);
+      expect(cancelled.documents, isEmpty);
+      expect(cancelled.failures, isEmpty);
+      expect(
+        Directory('${root.path}/vehicle_documents').listSync(),
+        hasLength(2),
+      );
+    },
+  );
 
   test(
     'original PDF pages remain searchable, correctly ordered and in landscape',
@@ -195,6 +262,135 @@ void main() {
         await Directory('${root.path}/vehicle_documents').list().toList(),
         isEmpty,
       );
+    },
+  );
+
+  test(
+    'edits export the current PDF order and keep older reports unchanged',
+    () async {
+      final repository = LocalDocumentRepository(
+        directoryProvider: () async => root,
+      );
+      Future<ReadingDocument> import(String name) async {
+        final file = await source(name, ['ATTACHMENT_$name']);
+        return repository.importFile(
+          file.path,
+          '$name.pdf',
+          DocumentSource.imported,
+        );
+      }
+
+      final a = await import('AAA');
+      final b = await import('BBB');
+      final c = await import('CCC');
+      final original = sampleReading(
+        source: ReadingSource.manual,
+      ).copyWith(documents: [a, b]);
+      final readings = MemoryReadingRepository()..items[original.id] = original;
+      final exports = MemoryEvidenceExportRepository();
+      final reports = EvidenceReportService(
+        exports: exports,
+        documentsDirectoryProvider: () async => root,
+      );
+      final oldReport = await reports.createSingle(
+        reading: original,
+        revisions: [],
+      );
+      final editing = MeterReadingService(
+        meters: MemoryMeterRepository(),
+        readings: readings,
+        exports: exports,
+        photos: const UnsupportedMeterPhotoCaptureRepository(),
+        reminders: NoopMeterReminderRepository(),
+      );
+      final updated = await editing.update(
+        existing: original,
+        value: original.value,
+        capturedAt: original.capturedAt,
+        note: 'Replaced, removed and reordered',
+        documents: [c, b],
+      );
+      expect(File(a.path).existsSync(), isFalse);
+      expect(File(b.path).existsSync(), isTrue);
+      expect(updated.documentHistory, isEmpty);
+      expect(await readings.loadRevisions(updated.id), isEmpty);
+      final report = await reports.createSingle(
+        reading: updated,
+        revisions: [],
+      );
+      final document = await PdfDocument.openData(
+        report.bytes,
+        sourceName: 'edited',
+      );
+      try {
+        final text = (await Future.wait(
+          document.pages.map((page) async => (await page.loadText())!.fullText),
+        )).join('\n');
+        expect(text, isNot(contains('ATTACHMENT_AAA')));
+        expect(text, contains('ATTACHMENT_CCC'));
+        expect(
+          text.indexOf('ATTACHMENT_CCC'),
+          lessThan(text.indexOf('ATTACHMENT_BBB')),
+        );
+      } finally {
+        await document.dispose();
+      }
+      expect(
+        await File(oldReport.record.filePath).readAsBytes(),
+        oldReport.bytes,
+      );
+      expect(await exports.loadAll(), hasLength(2));
+    },
+  );
+
+  test(
+    'tampered PDFs and incorrect page counts never create a partial export',
+    () async {
+      final repository = LocalDocumentRepository(
+        directoryProvider: () async => root,
+      );
+      final file = await source(
+        'twenty_pages',
+        List.generate(20, (i) => 'PAGE_${i + 1}'),
+      );
+      final attachment = await repository.importFile(
+        file.path,
+        'Rechnung.PDF',
+        DocumentSource.scanned,
+      );
+      expect(attachment.pageCount, 20);
+      final exports = MemoryEvidenceExportRepository();
+      final reports = EvidenceReportService(
+        exports: exports,
+        documentsDirectoryProvider: () async => root,
+      );
+      final wrongCount = ReadingDocument.fromJson({
+        ...attachment.toJson(),
+        'pageCount': 21,
+      });
+      await expectLater(
+        reports.createSingle(
+          reading: sampleReading(
+            source: ReadingSource.manual,
+          ).copyWith(documents: [wrongCount]),
+          revisions: [],
+        ),
+        throwsStateError,
+      );
+      await File(
+        attachment.path,
+      ).writeAsString('changed', mode: FileMode.append);
+      await expectLater(
+        reports.createSingle(
+          reading: sampleReading(
+            source: ReadingSource.manual,
+          ).copyWith(documents: [attachment]),
+          revisions: [],
+        ),
+        throwsStateError,
+      );
+      expect(await exports.loadAll(), isEmpty);
+      expect(Directory('${root.path}/evidence_reports').existsSync(), isFalse);
     },
   );
 

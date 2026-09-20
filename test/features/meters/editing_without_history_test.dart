@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fahrzeugakte/core/files/meter_photo_repository.dart';
 import 'package:fahrzeugakte/core/integrity/integrity_service.dart';
+import 'package:fahrzeugakte/core/reminders/local_notification_reminder_repository.dart';
+import 'package:fahrzeugakte/features/meters/domain/meter.dart';
 import 'package:fahrzeugakte/features/meters/application/meter_services.dart';
 import 'package:fahrzeugakte/features/meters/domain/meter_reading.dart';
 
@@ -12,6 +14,43 @@ import 'multiple_photos_test.dart' show testPhoto;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  test(
+    'a failed reminder refresh does not report a committed edit as failed',
+    () async {
+      final vehicle = sampleBook(
+        reminder: const ReadingReminderSchedule(
+          interval: ReminderInterval.daily,
+          day: 1,
+          hour: 9,
+          minute: 0,
+        ),
+      );
+      final original = sampleReading(
+        book: vehicle,
+        source: ReadingSource.manual,
+      );
+      final meters = MemoryMeterRepository()..items[vehicle.id] = vehicle;
+      final readings = _Readings()..items[original.id] = original;
+      final service = MeterReadingService(
+        meters: meters,
+        readings: readings,
+        exports: MemoryEvidenceExportRepository(),
+        photos: _Photos(),
+        reminders: _FailingReminders(),
+      );
+      final updated = await service.update(
+        existing: original,
+        value: original.value,
+        capturedAt: original.capturedAt,
+        note: 'Successfully saved',
+      );
+      expect(updated.note, 'Successfully saved');
+      expect(readings.items[original.id]!.note, updated.note);
+      await service.delete(updated);
+      expect(readings.items, isEmpty);
+    },
+  );
 
   test(
     'ordinary edits keep only current photos and never create revisions',
@@ -204,6 +243,16 @@ void main() {
         expect(readings.revisions, isEmpty);
       },
     );
+  }
+}
+
+class _FailingReminders extends NoopMeterReminderRepository {
+  @override
+  Future<ReminderOperationResult> schedule(
+    Meter meter, {
+    MeterReading? latestReading,
+  }) async {
+    throw StateError('Synthetic notification failure');
   }
 }
 

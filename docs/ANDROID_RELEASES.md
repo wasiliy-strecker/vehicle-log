@@ -13,6 +13,10 @@ außerhalb des Checkouts eingerichtet und gesichert werden.
 `android/key.properties.example` beschreibt die ignorierte lokale
 Konfiguration. Release-Builds ohne Signierkonfiguration werden abgewiesen.
 
+Die technische PDF-Prüfung vom 20.09.2026 ist in
+[PDF_RELEASE_AUDIT.md](PDF_RELEASE_AUDIT.md) dokumentiert. Sie ersetzt keinen
+signierten Store-Build und keine Gerätetests des Google-Scanners.
+
 Bei einem ausdrücklich beauftragten neuen Release den bekannten Play-Stand
 prüfen und den Versionscode erhöhen. Normale Dev-Arbeit erhöht ihn nicht.
 

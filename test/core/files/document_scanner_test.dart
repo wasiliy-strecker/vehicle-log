@@ -6,11 +6,25 @@ import 'package:fahrzeugakte/core/files/document_repository.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   const channel = MethodChannel('google_mlkit_document_scanner');
-  setUp(() => debugDefaultTargetPlatformOverride = TargetPlatform.android);
+  const lifecycle = MethodChannel(
+    'com.appfactory.vehicle_log/document_scan_lifecycle',
+  );
+  late List<String> lifecycleCalls;
+  setUp(() {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    lifecycleCalls = [];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(lifecycle, (call) async {
+          lifecycleCalls.add(call.method);
+          return null;
+        });
+  });
   tearDown(() {
     debugDefaultTargetPlatformOverride = null;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, null);
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(lifecycle, null);
   });
 
   test(
@@ -41,6 +55,7 @@ void main() {
         '/tmp/synthetic scan.pdf',
       );
       expect(closed, isTrue);
+      expect(lifecycleCalls, ['begin', 'finish']);
     },
   );
 
@@ -59,5 +74,54 @@ void main() {
         });
     expect(await const AndroidDocumentScannerRepository().scan(), isNull);
     expect(closed, isTrue);
+    expect(lifecycleCalls, ['begin', 'finish']);
+  });
+
+  test('unavailable scanner preserves a useful import fallback', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          if (call.method == 'vision#closeDocumentScanner') return null;
+          throw PlatformException(code: 'DocumentScanner', message: 'Failed');
+        });
+    await expectLater(
+      const AndroidDocumentScannerRepository().scan(),
+      throwsA(
+        isA<FormatException>()
+            .having((e) => e.message, 'RAM', contains('1,7 GB'))
+            .having((e) => e.message, 'fallback', contains('PDF auswählen')),
+      ),
+    );
+    expect(lifecycleCalls, ['begin', 'finish']);
+  });
+
+  test('a missing PDF is an error and releases the lifecycle guard', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          if (call.method == 'vision#closeDocumentScanner') return null;
+          return {'images': <String>[], 'pdf': null};
+        });
+    await expectLater(
+      const AndroidDocumentScannerRepository().scan(),
+      throwsFormatException,
+    );
+    expect(lifecycleCalls, ['begin', 'finish']);
+  });
+
+  test('cleanup failure does not lose a successfully scanned PDF', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          if (call.method == 'vision#closeDocumentScanner') {
+            throw PlatformException(code: 'cleanup_failed');
+          }
+          return {
+            'images': <String>[],
+            'pdf': {'uri': '/tmp/completed.pdf', 'pageCount': 1},
+          };
+        });
+    expect(
+      await const AndroidDocumentScannerRepository().scan(),
+      '/tmp/completed.pdf',
+    );
+    expect(lifecycleCalls, ['begin', 'finish']);
   });
 }

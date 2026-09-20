@@ -11,6 +11,7 @@ import '../core/integrity/integrity_service.dart';
 import '../core/ocr/meter_ocr_repository.dart';
 import '../core/ocr/mlkit_meter_ocr_repository.dart';
 import '../core/persistence/persistence_bundle.dart';
+import '../core/persistence/repository_transaction.dart';
 import '../core/persistence/persistence_factory.dart';
 import '../core/reminders/local_notification_reminder_repository.dart';
 import '../features/backup/application/backup_file_exporter.dart';
@@ -102,6 +103,7 @@ final meterOcrRepositoryProvider = Provider<MeterOcrRepository>((ref) {
 
 final meterServiceProvider = Provider<MeterService>(
   (ref) => MeterService(
+    transaction: ref.watch(repositoryTransactionProvider),
     meters: ref.watch(meterRepositoryProvider),
     readings: ref.watch(meterReadingRepositoryProvider),
     exports: ref.watch(evidenceExportRepositoryProvider),
@@ -113,6 +115,7 @@ final meterServiceProvider = Provider<MeterService>(
 
 final meterReadingServiceProvider = Provider<MeterReadingService>(
   (ref) => MeterReadingService(
+    transaction: ref.watch(repositoryTransactionProvider),
     meters: ref.watch(meterRepositoryProvider),
     readings: ref.watch(meterReadingRepositoryProvider),
     exports: ref.watch(evidenceExportRepositoryProvider),
@@ -122,6 +125,13 @@ final meterReadingServiceProvider = Provider<MeterReadingService>(
     evidencePhotos: ref.watch(evidencePhotoAssetRepositoryProvider),
   ),
 );
+
+final repositoryTransactionProvider = Provider<RepositoryTransaction>((ref) {
+  final repository = ref.watch(meterReadingRepositoryProvider);
+  return repository is RepositoryTransactionRunner
+      ? (repository as RepositoryTransactionRunner).runTransaction
+      : runWithoutTransaction;
+});
 
 final evidenceReportServiceProvider = Provider<EvidenceReportService>(
   (ref) => EvidenceReportService(

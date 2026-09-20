@@ -5,6 +5,7 @@ import 'package:universal_io/io.dart';
 import '../../../core/files/evidence_photo_asset_repository.dart';
 import '../../../core/files/meter_photo_repository.dart';
 import '../../../core/integrity/integrity_service.dart';
+import '../../../core/persistence/repository_transaction.dart';
 import '../../../core/reminders/local_notification_reminder_repository.dart';
 import '../../../core/utils/id_generator.dart';
 import '../../../core/utils/reading_time.dart';
@@ -22,6 +23,7 @@ class MeterService {
     required this.photos,
     required this.reminders,
     this.evidencePhotos = const NoopEvidencePhotoAssetRepository(),
+    this.transaction = runWithoutTransaction,
   });
 
   final MeterRepository meters;
@@ -30,6 +32,7 @@ class MeterService {
   final MeterPhotoCaptureRepository photos;
   final MeterReminderRepository reminders;
   final EvidencePhotoAssetRepository evidencePhotos;
+  final RepositoryTransaction transaction;
 
   Future<Meter> create({
     required String label,
@@ -77,28 +80,23 @@ class MeterService {
     }
     final meterReadings = await readings.loadForMeter(meterId);
     final evidenceExports = await exports.loadForMeter(meterId);
-    for (final reading in meterReadings) {
-      for (final document in reading.allDocuments) {
-        final file = File(document.path);
-        if (await file.exists()) await file.delete();
+    await transaction(() async {
+      for (final reading in meterReadings) {
+        await readings.delete(reading.id);
       }
-      for (final path in reading.allPhotoPaths) {
-        await photos.delete(path);
+      for (final export in evidenceExports) {
+        await exports.delete(export.id);
       }
-      for (final sha256
-          in reading.allPhotoVersions.map((photo) => photo.sha256).toSet()) {
-        await evidencePhotos.delete(sha256);
-      }
-      await readings.delete(reading.id);
-    }
-    for (final export in evidenceExports) {
-      final file = File(export.filePath);
-      if (await file.exists()) {
-        await file.delete();
-      }
-      await exports.delete(export.id);
-    }
-    await meters.delete(meterId);
+      await meters.delete(meterId);
+    });
+    await _cleanDeletedFiles(
+      deletedReadings: meterReadings,
+      deletedExports: evidenceExports,
+      readings: readings,
+      exports: exports,
+      photos: photos,
+      evidencePhotos: evidencePhotos,
+    );
   }
 }
 
@@ -111,6 +109,7 @@ class MeterReadingService {
     required this.reminders,
     this.integrity = const IntegrityService(),
     this.evidencePhotos = const NoopEvidencePhotoAssetRepository(),
+    this.transaction = runWithoutTransaction,
   });
 
   final MeterRepository meters;
@@ -120,6 +119,7 @@ class MeterReadingService {
   final MeterReminderRepository reminders;
   final IntegrityService integrity;
   final EvidencePhotoAssetRepository evidencePhotos;
+  final RepositoryTransaction transaction;
 
   Future<MeterReading> create({
     required Meter meter,
@@ -498,28 +498,27 @@ class MeterReadingService {
   }
 
   Future<void> delete(MeterReading reading) async {
-    final singleExports = (await exports.loadForMeter(reading.meterId)).where(
-      (record) =>
-          record.kind == EvidenceExportKind.singleReading &&
-          record.readingIds.contains(reading.id),
+    final singleExports = (await exports.loadForMeter(reading.meterId))
+        .where(
+          (record) =>
+              record.kind == EvidenceExportKind.singleReading &&
+              record.readingIds.contains(reading.id),
+        )
+        .toList();
+    await transaction(() async {
+      for (final record in singleExports) {
+        await exports.delete(record.id);
+      }
+      await readings.delete(reading.id);
+    });
+    await _cleanDeletedFiles(
+      deletedReadings: [reading],
+      deletedExports: singleExports,
+      readings: readings,
+      exports: exports,
+      photos: photos,
+      evidencePhotos: evidencePhotos,
     );
-    for (final record in singleExports) {
-      final file = File(record.filePath);
-      if (await file.exists()) await file.delete();
-      await exports.delete(record.id);
-    }
-    for (final document in reading.allDocuments) {
-      final file = File(document.path);
-      if (await file.exists()) await file.delete();
-    }
-    for (final path in reading.allPhotoPaths) {
-      await photos.delete(path);
-    }
-    for (final sha256
-        in reading.allPhotoVersions.map((photo) => photo.sha256).toSet()) {
-      await evidencePhotos.delete(sha256);
-    }
-    await readings.delete(reading.id);
     await _refreshReminderSummary(reading.meterId);
   }
 
@@ -595,12 +594,17 @@ class MeterReadingService {
   }
 
   Future<void> _refreshReminderSummary(String meterId) async {
-    final meter = await meters.findById(meterId);
-    if (meter == null || meter.reminder == null) return;
-    await reminders.schedule(
-      meter,
-      latestReading: _latestReading(await readings.loadForMeter(meterId)),
-    );
+    try {
+      final meter = await meters.findById(meterId);
+      if (meter == null || meter.reminder == null) return;
+      await reminders.schedule(
+        meter,
+        latestReading: _latestReading(await readings.loadForMeter(meterId)),
+      );
+    } on Object {
+      // The entry is already committed. A notification refresh must not make
+      // its editor discard newly saved attachments or retry the same creation.
+    }
   }
 
   Future<MeterReading?> previousReading({
@@ -619,6 +623,65 @@ class MeterReadingService {
             .toList()
           ..sort((a, b) => b.capturedAt.compareTo(a.capturedAt));
     return earlier.firstOrNull;
+  }
+}
+
+Future<void> _cleanDeletedFiles({
+  required List<MeterReading> deletedReadings,
+  required List<EvidenceExportRecord> deletedExports,
+  required MeterReadingRepository readings,
+  required EvidenceExportRepository exports,
+  required MeterPhotoCaptureRepository photos,
+  required EvidencePhotoAssetRepository evidencePhotos,
+}) async {
+  // Database deletion has committed. Keep files if references cannot be
+  // checked, and never turn a cleanup failure into an unsuccessful deletion.
+  try {
+    final remaining = await readings.loadAll();
+    final remainingExports = await exports.loadAll();
+    final usedPaths = <String>{
+      for (final reading in remaining) ...reading.allPhotoPaths,
+      for (final reading in remaining)
+        for (final document in reading.allDocuments) document.path,
+      for (final record in remainingExports) record.filePath,
+    };
+    final usedHashes = {
+      for (final reading in remaining)
+        for (final photo in reading.allPhotoVersions) photo.sha256,
+    };
+    for (final path in {
+      for (final reading in deletedReadings) ...reading.allPhotoPaths,
+    }.difference(usedPaths)) {
+      try {
+        await photos.delete(path);
+      } on Object {
+        // Leave an unreferenced file if storage cleanup fails.
+      }
+    }
+    for (final hash in {
+      for (final reading in deletedReadings)
+        for (final photo in reading.allPhotoVersions) photo.sha256,
+    }.difference(usedHashes)) {
+      try {
+        await evidencePhotos.delete(hash);
+      } on Object {
+        // Cached photos are expendable, but remaining entries still own theirs.
+      }
+    }
+    for (final path in {
+      for (final reading in deletedReadings)
+        for (final document in reading.allDocuments) document.path,
+      for (final record in deletedExports) record.filePath,
+    }.difference(usedPaths)) {
+      try {
+        final file = File(path);
+        if (await file.exists()) await file.delete();
+      } on Object {
+        // The records are gone. Keep an orphan instead of reporting failure.
+      }
+    }
+  } on Object {
+    // Never delete files when the remaining references are unknown.
   }
 }
 

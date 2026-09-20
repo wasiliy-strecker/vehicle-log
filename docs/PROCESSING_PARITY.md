@@ -1,5 +1,36 @@
 # Abgleich mit Mein Pflanzenbuch
 
+## Technische PDF-Releaseprüfung am 20.09.2026
+
+Der Nutzerauftrag zur Prüfung und Fehlerkorrektur autorisiert zusätzliche
+Absicherungen der PDF-Abläufe. Fahrzeug- und Eintragslöschungen verwenden
+über die Repository-Schnittstelle eine gemeinsame Drift-Transaktion. Erst
+nach deren Erfolg werden nicht mehr referenzierte Anhänge und Berichte
+bereinigt. Andere Einträge und bereits gespeicherte Fahrzeugverläufe behalten
+ihre Dateien. Eine fehlgeschlagene Berichtslöschung erhält die PDF. Scheitert
+das Speichern eines neuen Berichts, wird seine neue Datei wieder entfernt.
+Die Browser-Vorschau bleibt eine Implementierung im Arbeitsspeicher.
+
+Fehler beim Aktualisieren einer Erinnerung nach dem Speichern dürfen keinen
+bereits gespeicherten Eintrag als fehlgeschlagen melden. Dadurch kann der
+Editor seine neuen Anhänge korrekt als gespeichert übernehmen.
+
+Plugin, Scanner-Einstellungen und Google-Oberfläche bleiben erhalten. Ein
+app-lokaler nativer Lifecycle-Kanal schützt die Scanner-Rückgabe von Plugin
+0.4.1. Nach Prozessverlust existiert dort kein wartender Plugin-Aufruf mehr.
+MainActivity verwirft solche Rückgaben vor der Plugin-Zustellung und fängt
+doppelte Rückgaben ab. Ein Ergebnis ohne Intent gilt als Abbruch. Vorhandene
+Entwürfe werden wie bisher wiederhergestellt. Der nicht abgeschlossene Scan
+wird erneut gestartet. Der Request-Code ist an die ausdrücklich gepinnte
+Pluginversion gebunden und muss bei einem Plugin-Upgrade mitgeprüft werden.
+
+Regressionen prüfen echte SQLite-Rollbacks, Referenzerhalt, Fehler beim
+Entwurfsspeichern, Mehrfachimport mit gültigen und beschädigten Dateien,
+Ersetzen und Sortieren vor dem Export sowie unveränderte ältere Berichte.
+`DocumentScanLifecycleTest` prüft den nativen Rückgabeschutz ohne Emulator.
+Die Quellhashes bleiben unverändert. Die autorisierten lokalen Hashes und
+Testnachweise sind in den Paritätsausnahmen fortgeschrieben.
+
 ## Bearbeiten ohne Korrekturverlauf
 
 Seit dem Nutzerauftrag vom 19.09.2026 ersetzt einfaches Bearbeiten und Speichern

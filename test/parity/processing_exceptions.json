@@ -89,14 +89,16 @@
     },
     "lib/features/meters/data/drift_meter_repositories.dart": {
       "sourceSha256": "8c5a4c08c3d4ab76a402d2a0f450f476d074e7f3275f5509c0dff51974345e1d",
-      "localSha256": "85bc6e44cb0b80f0e5b4ef08c64c91ea499e97637977b0086082a7aaabbafd71",
-      "reason": "Persist plant care fields and ordered photos, expose custom activity labels in the dashboard and search, query reusable labels without loading photo metadata, and match custom labels with escaped Unicode-aware literal searches like the in-memory repository. Fahrzeugakte: Schema 8 persists VIN, registration, workshop, integer-cent costs and ordered current/historical PDFs with revision changes. Migrations preserve existing manifests. Native search includes the workshop.",
+      "localSha256": "4bbb89b1c3262efacfe3bba60998ba4062746198df6439e72cec32d37325b4db",
+      "reason": "Persist plant care fields and ordered photos, expose custom activity labels in the dashboard and search, query reusable labels without loading photo metadata, and match custom labels with escaped Unicode-aware literal searches like the in-memory repository. Fahrzeugakte: Schema 8 persists VIN, registration, workshop, integer-cent costs and ordered current/historical PDFs with revision changes. Migrations preserve existing manifests. Native search includes the workshop. Technical PDF release audit protects attachment files with committed database deletion and reference-aware cleanup. Notification refresh failures cannot invalidate committed entries.",
       "tests": [
         "test/features/meters/multiple_photos_test.dart",
         "test/features/meters/plant_multiple_photos_test.dart",
         "test/features/meters/custom_activity_test.dart",
         "test/core/persistence/vehicle_migration_test.dart",
-        "test/features/meters/vehicle_documents_test.dart"
+        "test/features/meters/vehicle_documents_test.dart",
+        "test/features/meters/attachment_deletion_safety_test.dart",
+        "test/features/meters/editing_without_history_test.dart"
       ]
     },
     "lib/features/meters/data/in_memory_meter_repositories.dart": {

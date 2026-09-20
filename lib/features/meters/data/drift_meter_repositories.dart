@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 
 import '../../../core/persistence/app_database.dart';
+import '../../../core/persistence/repository_transaction.dart';
 import '../../evidence/domain/evidence_export.dart';
 import '../../evidence/domain/evidence_export_page.dart';
 import '../domain/meter.dart';
@@ -99,10 +100,15 @@ class DriftMeterRepository implements MeterRepository {
   }
 }
 
-class DriftMeterReadingRepository implements MeterReadingRepository {
+class DriftMeterReadingRepository
+    implements MeterReadingRepository, RepositoryTransactionRunner {
   const DriftMeterReadingRepository(this.database);
 
   final AppDatabase database;
+
+  @override
+  Future<void> runTransaction(Future<void> Function() operation) =>
+      database.transaction(operation);
 
   @override
   Stream<List<String>> watchActivitySuggestions() {

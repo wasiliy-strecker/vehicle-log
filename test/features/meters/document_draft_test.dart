@@ -42,7 +42,93 @@ class _Documents implements DocumentRepository {
   }
 }
 
+class _FailingDraftStore extends MemoryPhotoDraftStore {
+  int writes = 0;
+  int? failAt;
+  @override
+  Future<void> write(String route, Map<String, dynamic> draft) async {
+    writes++;
+    if (writes == failAt) throw StateError('Synthetic draft write failure');
+    await super.write(route, draft);
+  }
+}
+
 void main() {
+  test(
+    'failed import persistence keeps originals and removes only new files',
+    () async {
+      final store = _FailingDraftStore()..failAt = 2;
+      final repository = _Documents()
+        ..next = DocumentImportResult(documents: [_document('new')]);
+      final original = sampleReading(
+        source: ReadingSource.manual,
+      ).copyWith(documents: [_document('saved')]);
+      final readings = MemoryReadingRepository()..items[original.id] = original;
+      final session = ReadingPhotoSession(
+        route: '/reading/${original.id}/edit',
+        original: original,
+        repository: const UnsupportedMeterPhotoCaptureRepository(),
+        documentRepository: repository,
+        store: store,
+        readings: readings,
+      );
+      await expectLater(
+        session.captureDocuments(
+          scan: false,
+          replacementId: 'saved',
+          formFields: {'cost': '99,90'},
+        ),
+        throwsStateError,
+      );
+      expect(session.documents.single.id, 'saved');
+      expect(repository.deleted, ['/synthetic/new.pdf']);
+      expect(session.busy, isFalse);
+      final recovered = ReadingPhotoSession(
+        route: session.route,
+        original: original,
+        repository: const UnsupportedMeterPhotoCaptureRepository(),
+        documentRepository: repository,
+        store: store,
+        readings: readings,
+      );
+      await recovered.restore();
+      expect(recovered.documents.single.id, 'saved');
+      expect(recovered.fields['cost'], '99,90');
+    },
+  );
+
+  test('failed reorder or removal restores the durable PDF draft', () async {
+    for (final remove in [false, true]) {
+      final store = _FailingDraftStore();
+      final repository = _Documents()
+        ..next = DocumentImportResult(
+          documents: [_document('a'), _document('b')],
+        );
+      final session = ReadingPhotoSession(
+        route: '/meter/vehicle/capture',
+        repository: const UnsupportedMeterPhotoCaptureRepository(),
+        documentRepository: repository,
+        store: store,
+        readings: MemoryReadingRepository(),
+      );
+      await session.captureDocuments(scan: false, formFields: {});
+      store.failAt = store.writes + 1;
+      await expectLater(
+        session.changeDocuments(
+          remove
+              ? [session.documents.last]
+              : session.documents.reversed.toList(),
+          {},
+        ),
+        throwsStateError,
+      );
+      expect(session.documents.map((d) => d.id), ['a', 'b']);
+      expect(repository.deleted, isEmpty);
+      final saved = (await store.read(session.route))!['documents'] as List;
+      expect(saved.map((d) => d['id']), ['a', 'b']);
+      expect(session.busy, isFalse);
+    }
+  });
   test(
     'interrupted scanner restores inputs and existing PDFs without relaunching',
     () async {

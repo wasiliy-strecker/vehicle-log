@@ -92,6 +92,12 @@ Der Browser ist eine Vorschau mit Daten im Arbeitsspeicher. Neuladen verwirft
 diese Daten. Dauerhafte Speicherung, Scannen, PDF-Dateiabläufe und Erinnerungen
 werden auf Android geprüft. Der Scanner benötigt Google Play Services und
 gegebenenfalls beim ersten Start einen Download seiner Komponenten.
+Die aktuelle Android-Konfiguration setzt Android 7.0 (API 24) voraus und
+enthält ARM32-, ARM64- und x86_64-Bibliotheken. Der Google-Dokumentscanner
+benötigt zusätzlich mindestens 1,7 GB RAM. Ohne passende Google Play Services
+oder ausreichend RAM steht weiterhin der Import vorhandener PDFs bereit.
+Die technischen Nachweise und verbleibenden Release-Prüfungen stehen in
+[PDF_RELEASE_AUDIT.md](docs/PDF_RELEASE_AUDIT.md).
 
 Dev heißt Fahrzeugakte Dev (`com.appfactory.vehicle_log.dev`). Store verwendet
 `com.appfactory.vehicle_log`. Store-Debug und Store-Profile sind deaktiviert.

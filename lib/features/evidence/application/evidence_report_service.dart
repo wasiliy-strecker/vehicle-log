@@ -46,11 +46,15 @@ class EvidenceReportService {
   final PdfAssemblyService pdfAssembly;
 
   Future<void> delete(EvidenceExportRecord record) async {
-    final file = File(record.filePath);
-    if (await file.exists()) {
-      await file.delete();
-    }
     await exports.delete(record.id);
+    try {
+      final remaining = await exports.loadAll();
+      if (remaining.any((other) => other.filePath == record.filePath)) return;
+      final file = File(record.filePath);
+      if (await file.exists()) await file.delete();
+    } on Object {
+      // Keep an unreferenced file if cleanup fails after the committed delete.
+    }
   }
 
   Future<GeneratedEvidenceReport> createSingle({
@@ -220,7 +224,6 @@ class EvidenceReportService {
     );
     await directory.create(recursive: true);
     final file = File(p.join(directory.path, fileName));
-    await file.writeAsBytes(bytes, flush: true);
     final record = EvidenceExportRecord(
       id: id,
       meterId: readings.first.meterId,
@@ -233,7 +236,17 @@ class EvidenceReportService {
       manifestSha256: manifestSha,
       photoMode: photoMode,
     );
-    await exports.save(record);
+    try {
+      await file.writeAsBytes(bytes, flush: true);
+      await exports.save(record);
+    } on Object {
+      try {
+        if (await file.exists()) await file.delete();
+      } on Object {
+        // Preserve the actual write/save error if cleanup also fails.
+      }
+      rethrow;
+    }
     return GeneratedEvidenceReport(record: record, bytes: bytes);
   }
 

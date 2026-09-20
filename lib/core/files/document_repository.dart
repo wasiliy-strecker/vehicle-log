@@ -33,6 +33,9 @@ abstract interface class DocumentScannerRepository {
 /// Same Android scanner and settings as AI Contract Manager.
 class AndroidDocumentScannerRepository implements DocumentScannerRepository {
   const AndroidDocumentScannerRepository();
+  static const _lifecycle = MethodChannel(
+    'com.appfactory.vehicle_log/document_scan_lifecycle',
+  );
 
   @override
   Future<String?> scan() async {
@@ -49,7 +52,10 @@ class AndroidDocumentScannerRepository implements DocumentScannerRepository {
         isGalleryImport: false,
       ),
     );
+    var ownsScan = false;
     try {
+      await _lifecycle.invokeMethod<void>('begin');
+      ownsScan = true;
       final result = await scanner.scanDocument();
       final uri = result.pdf?.uri;
       if (uri == null || uri.trim().isEmpty) {
@@ -61,10 +67,22 @@ class AndroidDocumentScannerRepository implements DocumentScannerRepository {
     } on PlatformException catch (error) {
       if ((error.message ?? '').toLowerCase().contains('cancel')) return null;
       throw const FormatException(
-        'Der Dokumentscanner konnte nicht geöffnet werden. Prüfe Google Play Services und die Internetverbindung beim ersten Start. Deine Eingaben bleiben erhalten.',
+        'Der Dokumentscanner ist nicht verfügbar. Er benötigt Google Play Services und mindestens 1,7 GB Arbeitsspeicher. Prüfe auch die Internetverbindung beim ersten Start. Du kannst stattdessen eine PDF auswählen. Deine Eingaben bleiben erhalten.',
       );
     } finally {
-      await scanner.close();
+      if (ownsScan) {
+        try {
+          await scanner.close();
+        } on PlatformException {
+          // Cleanup must not discard a completed scan or replace its error.
+        } finally {
+          try {
+            await _lifecycle.invokeMethod<void>('finish');
+          } on PlatformException {
+            // The native activity may already have been detached.
+          }
+        }
+      }
     }
   }
 }

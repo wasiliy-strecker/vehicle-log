@@ -22,6 +22,7 @@ import java.io.File
 import java.util.concurrent.Executors
 
 class MainActivity : FlutterActivity() {
+    private val documentScanLifecycle = DocumentScanLifecycle()
     private var reminderChannel: MethodChannel? = null
     private var notificationPermissionResult: MethodChannel.Result? = null
     private var pendingBackupSave: PendingBackupSave? = null
@@ -36,6 +37,10 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            DocumentScanLifecycle.CHANNEL,
+        ).setMethodCallHandler(documentScanLifecycle)
         reminderChannel = MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             "com.appfactory.vehicle_log/reminders",
@@ -107,6 +112,16 @@ class MainActivity : FlutterActivity() {
 
     @Deprecated("Deprecated in Android")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (requestCode == DocumentScanLifecycle.REQUEST_CODE) {
+            // A recreated process has no Dart caller or plugin pendingResult.
+            // Its saved form is restored separately. Do not crash on the orphan.
+            if (!documentScanLifecycle.consumeResult()) return
+            val safeResultCode = if (resultCode == Activity.RESULT_OK && data == null) {
+                Activity.RESULT_CANCELED
+            } else resultCode
+            super.onActivityResult(requestCode, safeResultCode, data)
+            return
+        }
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode != backupSaveRequestCode) return
         val destination = if (resultCode == Activity.RESULT_OK) data?.data else null

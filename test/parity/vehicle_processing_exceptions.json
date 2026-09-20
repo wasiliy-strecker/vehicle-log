@@ -4,11 +4,13 @@
     "lib/app/app_providers.dart": {
       "sourceSha256": "dd0f5ab25ed5553a7582ce1c76d6adf95f49b7e0362453f192f8c129a48c7d7a",
       "localPath": "lib/app/app_providers.dart",
-      "localSha256": "9bfe321d49fff7d56cc83b16fb50bddeaf9864308086308cf1d04a9bf8698cf2",
-      "reason": "Inject an independent local document repository alongside the existing app-local providers.",
+      "localSha256": "3a30488d700f1f7ab15e3ec97606041c3d4e229dd290ee75223f2c67cc7140e2",
+      "reason": "Inject an independent local document repository alongside the existing app-local providers. Technical PDF release audit protects attachment files with committed database deletion and reference-aware cleanup. Notification refresh failures cannot invalidate committed entries.",
       "tests": [
         "test/features/meters/vehicle_entry_screen_test.dart",
-        "test/core/files/document_scanner_test.dart"
+        "test/core/files/document_scanner_test.dart",
+        "test/features/meters/attachment_deletion_safety_test.dart",
+        "test/features/meters/editing_without_history_test.dart"
       ]
     },
     "lib/app/app.dart": {
@@ -123,12 +125,13 @@
     "lib/features/evidence/application/evidence_report_service.dart": {
       "sourceSha256": "712e1d5c6dacfc6b9f7e0e6ee7c5ec3907e23e0444d5129c07d7daf9d0070c69",
       "localPath": "lib/features/evidence/application/evidence_report_service.dart",
-      "localSha256": "c657598700cbf0e727c64e5806c8ce8eff5d6fea78afd3ca09c98519c09dc7b7",
-      "reason": "Vehicle report labels, additional metadata and attachment-aware export choices. Full PDF exports append original PDF pages after each entry with separators and validate completeness. Compact exports list filenames. Existing photo layout is retained.",
+      "localSha256": "17b8585aa53a9bffc2a8c82de764cb2740111bcb275432410bd6be8707554bdc",
+      "reason": "Vehicle report labels, additional metadata and attachment-aware export choices. Full PDF exports append original PDF pages after each entry with separators and validate completeness. Compact exports list filenames. Existing photo layout is retained. Technical PDF release audit preserves report files on database deletion failure and cleans new report files after failed persistence.",
       "tests": [
         "test/features/evidence/vehicle_pdf_attachments_test.dart",
         "test/features/evidence/evidence_report_service_test.dart",
-        "test/features/meters/capture_reading_screen_test.dart"
+        "test/features/meters/capture_reading_screen_test.dart",
+        "test/features/meters/attachment_deletion_safety_test.dart"
       ]
     },
     "lib/features/evidence/presentation/evidence_export_card.dart": {
@@ -178,12 +181,14 @@
     "lib/features/meters/data/drift_meter_repositories.dart": {
       "sourceSha256": "7e0cb5ec1de5c48d134b01f8ea0c44f878a95509ef0146e1bdf5e4f63ffa9575",
       "localPath": "lib/features/meters/data/drift_meter_repositories.dart",
-      "localSha256": "85bc6e44cb0b80f0e5b4ef08c64c91ea499e97637977b0086082a7aaabbafd71",
-      "reason": "Schema 8 persists VIN, registration, workshop, integer-cent costs and ordered current/historical PDFs with revision changes. Migrations preserve existing manifests. Native search includes the workshop.",
+      "localSha256": "4bbb89b1c3262efacfe3bba60998ba4062746198df6439e72cec32d37325b4db",
+      "reason": "Schema 8 persists VIN, registration, workshop, integer-cent costs and ordered current/historical PDFs with revision changes. Migrations preserve existing manifests. Native search includes the workshop. Technical PDF release audit protects attachment files with committed database deletion and reference-aware cleanup. Notification refresh failures cannot invalidate committed entries.",
       "tests": [
         "test/core/persistence/vehicle_migration_test.dart",
         "test/features/meters/vehicle_documents_test.dart",
-        "test/features/meters/custom_activity_test.dart"
+        "test/features/meters/custom_activity_test.dart",
+        "test/features/meters/attachment_deletion_safety_test.dart",
+        "test/features/meters/editing_without_history_test.dart"
       ]
     },
     "lib/features/meters/domain/meter_reading.dart": {
@@ -233,14 +238,15 @@
     "lib/features/meters/application/meter_services.dart": {
       "sourceSha256": "fc81020bb66937ec6be998b73ac76638c8c59862bd6c2faff00e4bd5a6ac28b1",
       "localPath": "lib/features/meters/application/meter_services.dart",
-      "localSha256": "5a7e1411ddbc72397260e5a2cd5b82bfe61dad2fc1c4ec7144bcd484e801bc0b",
-      "reason": "Vehicle labels and km defaults, optional vehicle/entry metadata and PDF versioning. Kilometers compare across activities with matching units. Corrections archive removed PDFs, deletion removes their files, and search includes workshop. Explicit user request removes correction-history UI and new revisions. Normal edits preserve legacy references and clean only unreferenced removed attachments after saving.",
+      "localSha256": "53d534347f5802e62c46a79982fc1c5605dab4701dd0392ed4d92a9f9b501d12",
+      "reason": "Vehicle labels and km defaults, optional vehicle/entry metadata and PDF versioning. Kilometers compare across activities with matching units. Corrections archive removed PDFs, deletion removes their files, and search includes workshop. Explicit user request removes correction-history UI and new revisions. Normal edits preserve legacy references and clean only unreferenced removed attachments after saving. Technical PDF release audit protects attachment files with committed database deletion and reference-aware cleanup. Notification refresh failures cannot invalidate committed entries.",
       "tests": [
         "test/features/meters/vehicle_documents_test.dart",
         "test/features/meters/vehicle_entry_screen_test.dart",
         "test/features/meters/multiple_photos_test.dart",
         "test/features/meters/editing_without_history_test.dart",
-        "test/features/meters/reading_evidence_explanation_test.dart"
+        "test/features/meters/reading_evidence_explanation_test.dart",
+        "test/features/meters/attachment_deletion_safety_test.dart"
       ]
     },
     "lib/features/meters/presentation/meter_visuals.dart": {
@@ -474,11 +480,13 @@
     "android/app/src/main/kotlin/com/appfactory/pflanzenbuch/MainActivity.kt": {
       "sourceSha256": "21e7e5b0c36828040bca1dd06bca682f815fbabed1c02403b21189dc2e9949d9",
       "localPath": "android/app/src/main/kotlin/com/appfactory/vehicle_log/MainActivity.kt",
-      "localSha256": "f8140f48ff797930be068120590c453b68fd2baf4188c2e5e6e15f333165b6a3",
-      "reason": "Vehicle Android namespace, notification labels and steel-blue vehicle icon. Reminder scheduling and backup channels retain their original behavior.",
+      "localSha256": "b762eefb51c0591f043d6cda80e73769da3dea2cc3c8d1601321d281945fd95b",
+      "reason": "Vehicle Android namespace, notification labels and steel-blue vehicle icon. Reminder scheduling and backup channels retain their original behavior. Technical PDF release audit guards the pinned ML Kit plugin against orphaned or duplicate activity results after process recreation.",
       "tests": [
         "android/app/src/test/kotlin/com/appfactory/vehicle_log/ReminderAndroidTest.kt",
-        "test/tooling/build_internal_test_aab_test.dart"
+        "test/tooling/build_internal_test_aab_test.dart",
+        "android/app/src/test/kotlin/com/appfactory/vehicle_log/DocumentScanLifecycleTest.kt",
+        "test/core/files/document_scanner_test.dart"
       ]
     },
     "android/app/src/main/res/drawable/ic_stat_plant.xml": {
