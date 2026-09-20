@@ -6,12 +6,17 @@ Store wird nur als Release gebaut. Debug und Profile sind deaktiviert.
 
 ## Signierung und erster Release
 
-Es ist noch kein Store-Release erstellt oder veröffentlicht. Die Startversion
-lautet `1.0.0+1`. Es wurden keine privaten Signierschlüssel aus anderen Apps
-übernommen. Ein eigener Upload-Schlüssel muss vor dem ersten Store-Build
-außerhalb des Checkouts eingerichtet und gesichert werden.
-`android/key.properties.example` beschreibt die ignorierte lokale
-Konfiguration. Release-Builds ohne Signierkonfiguration werden abgewiesen.
+Die nächste interne Testversion lautet `1.0.0+3`. Der eigene Upload-Schlüssel
+ist außerhalb des Checkouts unter `~/.local/share/app-factory/signing/fahrzeugakte/`
+eingerichtet. Eine geschützte lokale Sicherung liegt unter
+`~/backups/fahrzeugakte-signing/`. Die ignorierte Datei `android/key.properties`
+verweist auf diesen Schlüssel. Es wurden keine Signierschlüssel anderer Apps
+übernommen. Die lokale Sicherung zusätzlich außerhalb dieses Rechners verwahren.
+
+Die fertigen Store-Texte und Hinweise für den manuellen Upload stehen unter
+[PLAY_TEST_RELEASE.md](store/PLAY_TEST_RELEASE.md). Die tatsächlichen Nachweise
+für Version 1.0.0+3 stehen im
+[Abschlussbericht](INTERNAL_RELEASE_1.0.0_3.md).
 
 Die technische PDF-Prüfung vom 20.09.2026 ist in
 [PDF_RELEASE_AUDIT.md](PDF_RELEASE_AUDIT.md) dokumentiert. Sie ersetzt keinen

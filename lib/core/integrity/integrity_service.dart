@@ -13,6 +13,15 @@ class IntegrityService {
     return _hex(hash.bytes);
   }
 
+  Future<String> sha256Stream(Stream<List<int>> chunks) async {
+    final sink = Sha256().toSync().newHashSink();
+    await for (final chunk in chunks) {
+      sink.add(chunk);
+    }
+    sink.close();
+    return _hex(sink.hashBytes);
+  }
+
   Future<String> sha256Text(String text) {
     return sha256Bytes(utf8.encode(text));
   }

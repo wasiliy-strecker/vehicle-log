@@ -6,6 +6,7 @@ import 'package:pdfrx/pdfrx.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../app/widgets/app_snack_bar.dart';
+import '../../../core/files/pdf_limits.dart';
 import '../application/reading_photo_session.dart';
 import '../domain/reading_document.dart';
 
@@ -91,9 +92,12 @@ class ReadingDocumentEditor extends StatelessWidget {
       await work();
     } catch (error) {
       if (context.mounted) {
+        final message = error is FormatException
+            ? error.message
+            : 'Bitte versuche es erneut.';
         ScaffoldMessenger.of(context).showSnackBar(
           AppSnackBar(
-            message: 'Dokument konnte nicht verarbeitet werden: $error',
+            message: 'Dokument konnte nicht verarbeitet werden: $message',
           ),
         );
       }
@@ -113,6 +117,17 @@ class ReadingDocumentEditor extends StatelessWidget {
               context,
             ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
           ),
+          const SizedBox(height: 6),
+          Text(
+            '${session.documentPages} von ${PdfLimits.entryPages} PDF-Seiten · '
+            '${(session.documentBytes / 1000000).toStringAsFixed(1)} von 50 MB',
+          ),
+          const Text('Maximal 25 MB je PDF'),
+          if (session.documentPages > PdfLimits.entryPages ||
+              session.documentBytes > PdfLimits.entryBytes)
+            const Text(
+              'Bereits gespeicherte größere Anhänge bleiben erhalten.',
+            ),
           if (session.documents.length > 1) ...[
             const SizedBox(height: 6),
             const Text(
@@ -154,7 +169,10 @@ class ReadingDocumentEditor extends StatelessWidget {
             ),
           const SizedBox(height: 12),
           OutlinedButton.icon(
-            onPressed: enabled && !session.busy ? () => _add(context) : null,
+            onPressed:
+                enabled && !session.busy && !session.documentBudget().exhausted
+                ? () => _add(context)
+                : null,
             icon: const Icon(Icons.note_add_outlined),
             label: const Text(
               'PDF auswählen/scannen',

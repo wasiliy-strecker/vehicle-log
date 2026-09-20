@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:universal_io/io.dart';
 
 import '../../../core/integrity/integrity_service.dart';
+import '../../../core/persistence/repository_transaction.dart';
 import '../../../core/reminders/local_notification_reminder_repository.dart';
 import '../../evidence/domain/evidence_export.dart';
 import '../../meters/domain/meter.dart';
@@ -139,9 +140,15 @@ class EncryptedBackupService {
     required this.reminders,
     this.integrity = const IntegrityService(),
     this.kdfIterations = 210000,
+    RepositoryTransaction? transaction,
     BackupDirectoryProvider? temporaryDirectoryProvider,
     BackupDirectoryProvider? documentsDirectoryProvider,
-  }) : _temporaryDirectoryProvider =
+  }) : transaction =
+           transaction ??
+           (readings is RepositoryTransactionRunner
+               ? (readings as RepositoryTransactionRunner).runTransaction
+               : runWithoutTransaction),
+       _temporaryDirectoryProvider =
            temporaryDirectoryProvider ?? getTemporaryDirectory,
        _documentsDirectoryProvider =
            documentsDirectoryProvider ?? getApplicationDocumentsDirectory;
@@ -158,6 +165,7 @@ class EncryptedBackupService {
   final MeterReminderRepository reminders;
   final IntegrityService integrity;
   final int kdfIterations;
+  final RepositoryTransaction transaction;
   final BackupDirectoryProvider _temporaryDirectoryProvider;
   final BackupDirectoryProvider _documentsDirectoryProvider;
 
@@ -290,6 +298,7 @@ class EncryptedBackupService {
     _validatePassword(password);
     BinaryBackupReader? reader;
     Directory? stagingDirectory;
+    final createdPaths = <String>{};
     late final Map<String, dynamic> payload;
     try {
       Map<String, String>? stagedAssets;
@@ -311,13 +320,39 @@ class EncryptedBackupService {
       } else {
         payload = await _decryptLegacy(path, password);
       }
-      return await _restorePayload(payload, stagedAssets: stagedAssets);
+      late BackupImportResult imported;
+      await transaction(() async {
+        imported = await _restorePayload(
+          payload,
+          stagedAssets: stagedAssets,
+          createdPaths: createdPaths,
+        );
+      });
+      var reminderIssues = 0;
+      try {
+        reminderIssues = await _reconcileReminders();
+      } on Object {
+        reminderIssues = 1;
+      }
+      return BackupImportResult(
+        meters: imported.meters,
+        readings: imported.readings,
+        exports: imported.exports,
+        skipped: imported.skipped,
+        repairedPhotos: imported.repairedPhotos,
+        reminderIssues: reminderIssues,
+      );
     } on BinaryBackupCodecException catch (error) {
       throw _translateBinaryError(error);
     } finally {
       reader?.close();
-      if (stagingDirectory != null && await stagingDirectory.exists()) {
-        await stagingDirectory.delete(recursive: true);
+      await _cleanUnreferencedRestoreFiles(createdPaths);
+      try {
+        if (stagingDirectory != null && await stagingDirectory.exists()) {
+          await stagingDirectory.delete(recursive: true);
+        }
+      } on Object {
+        // Cleanup cannot turn a committed import into a reported failure.
       }
     }
   }
@@ -325,6 +360,7 @@ class EncryptedBackupService {
   Future<BackupImportResult> _restorePayload(
     Map<String, dynamic> payload, {
     Map<String, String>? stagedAssets,
+    required Set<String> createdPaths,
   }) async {
     final files = <String, Map<String, dynamic>>{
       for (final item in payload['files'] as List)
@@ -361,6 +397,7 @@ class EncryptedBackupService {
       );
       final existing = await readings.findById(reading.id);
       if (existing != null && !reading.updatedAt.isAfter(existing.updatedAt)) {
+        final documentPaths = <String, String>{};
         for (final document in existing.allDocuments) {
           final portable = files['document:${document.id}'];
           if (portable == null || portable['sha256'] != document.sha256) {
@@ -370,22 +407,33 @@ class EncryptedBackupService {
           if (!await file.exists() ||
               await integrity.sha256Bytes(await file.readAsBytes()) !=
                   document.sha256) {
-            final restored = await _restoreFile(
+            documentPaths[document.path] = await _restoreFile(
               portable,
               Directory(p.join(documents.path, 'vehicle_documents')),
               stagedAssets: stagedAssets,
+              createdPaths: createdPaths,
             );
-            if (restored != file.path) {
-              await file.parent.create(recursive: true);
-              await File(restored).copy(file.path);
-            }
           }
         }
+        final repaired = documentPaths.isEmpty
+            ? existing
+            : existing.copyWith(
+                documents: [
+                  for (final doc in existing.documents)
+                    doc.withPath(documentPaths[doc.path] ?? doc.path),
+                ],
+                documentHistory: [
+                  for (final doc in existing.documentHistory)
+                    doc.withPath(documentPaths[doc.path] ?? doc.path),
+                ],
+              );
+        if (documentPaths.isNotEmpty) await readings.save(repaired);
         repairedPhotos += await _repairReadingPhotos(
-          existing,
+          repaired,
           photoFilesByHash,
           Directory(p.join(documents.path, 'meter_photos')),
           stagedAssets: stagedAssets,
+          createdPaths: createdPaths,
         );
         skipped += 1;
         continue;
@@ -406,6 +454,7 @@ class EncryptedBackupService {
               portable,
               Directory(p.join(documents.path, 'meter_photos')),
               stagedAssets: stagedAssets,
+              createdPaths: createdPaths,
             ),
           ),
         );
@@ -425,6 +474,7 @@ class EncryptedBackupService {
               archived,
               Directory(p.join(documents.path, 'meter_photos')),
               stagedAssets: stagedAssets,
+              createdPaths: createdPaths,
             ),
           ),
         );
@@ -453,6 +503,7 @@ class EncryptedBackupService {
                 portable,
                 Directory(p.join(documents.path, 'vehicle_documents')),
                 stagedAssets: stagedAssets,
+                createdPaths: createdPaths,
               ),
             ),
           );
@@ -494,6 +545,7 @@ class EncryptedBackupService {
         portable,
         Directory(p.join(documents.path, 'evidence_reports')),
         stagedAssets: stagedAssets,
+        createdPaths: createdPaths,
       );
       await exports.save(
         EvidenceExportRecord(
@@ -512,6 +564,16 @@ class EncryptedBackupService {
       exportCount += 1;
     }
 
+    return BackupImportResult(
+      meters: meterCount,
+      readings: readingCount,
+      exports: exportCount,
+      skipped: skipped,
+      repairedPhotos: repairedPhotos,
+    );
+  }
+
+  Future<int> _reconcileReminders() async {
     var reminderIssues = 0;
     for (final meter in await meters.loadAll()) {
       try {
@@ -537,14 +599,33 @@ class EncryptedBackupService {
         reminderIssues++;
       }
     }
-    return BackupImportResult(
-      meters: meterCount,
-      readings: readingCount,
-      exports: exportCount,
-      skipped: skipped,
-      repairedPhotos: repairedPhotos,
-      reminderIssues: reminderIssues,
-    );
+    return reminderIssues;
+  }
+
+  Future<void> _cleanUnreferencedRestoreFiles(Set<String> paths) async {
+    if (paths.isEmpty) return;
+    try {
+      final referenced =
+          (await readings.loadAll())
+              .expand(
+                (r) => [
+                  ...r.allPhotoPaths,
+                  ...r.allDocuments.map((d) => d.path),
+                ],
+              )
+              .toSet()
+            ..addAll((await exports.loadAll()).map((e) => e.filePath));
+      for (final path in paths.difference(referenced)) {
+        try {
+          final file = File(path);
+          if (await file.exists()) await file.delete();
+        } on Object {
+          /* Preserve data when cleanup is unavailable. */
+        }
+      }
+    } on Object {
+      /* An unreadable database must never trigger file deletion. */
+    }
   }
 
   Future<int> _repairReadingPhotos(
@@ -552,6 +633,7 @@ class EncryptedBackupService {
     Map<String, Map<String, dynamic>> photoFiles,
     Directory directory, {
     Map<String, String>? stagedAssets,
+    required Set<String> createdPaths,
   }) async {
     final replacements = <String, String>{};
     try {
@@ -569,6 +651,7 @@ class EncryptedBackupService {
           portable,
           directory,
           stagedAssets: stagedAssets,
+          createdPaths: createdPaths,
         );
       }
       if (replacements.isEmpty) return 0;
@@ -637,9 +720,11 @@ class EncryptedBackupService {
     Map<String, dynamic> portable,
     Directory directory, {
     Map<String, String>? stagedAssets,
+    required Set<String> createdPaths,
   }) async {
     final expected = portable['sha256'] as String;
-    final List<int> bytes;
+    List<int>? bytes;
+    File? stagedFile;
     if (stagedAssets != null) {
       final assetSha256 = portable['assetSha256'] as String?;
       if (assetSha256 == null || assetSha256 != expected) {
@@ -655,11 +740,14 @@ class EncryptedBackupService {
           portable['fileName'] as String? ?? '',
         );
       }
-      bytes = await File(stagedPath).readAsBytes();
+      stagedFile = File(stagedPath);
     } else {
       bytes = base64Decode(portable['bytesBase64'] as String);
     }
-    if (await integrity.sha256Bytes(bytes) != expected) {
+    final actual = stagedFile == null
+        ? await integrity.sha256Bytes(bytes!)
+        : await integrity.sha256Stream(stagedFile.openRead());
+    if (actual != expected) {
       throw BackupException(
         BackupFailure.integrityMismatch,
         portable['fileName'] as String? ?? '',
@@ -673,7 +761,12 @@ class EncryptedBackupService {
         '${DateTime.now().microsecondsSinceEpoch}_$fileName',
       ),
     );
-    await file.writeAsBytes(bytes, flush: true);
+    createdPaths.add(file.path);
+    if (stagedFile != null) {
+      await stagedFile.copy(file.path);
+    } else {
+      await file.writeAsBytes(bytes!, flush: true);
+    }
     return file.path;
   }
 

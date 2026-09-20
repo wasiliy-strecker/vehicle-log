@@ -13,23 +13,27 @@ import '../../support/reading_fixtures.dart';
 class _Documents implements DocumentRepository {
   final deleted = <String>[];
   @override
-  Future<DocumentImportResult> pick({bool multiple = true}) async =>
-      DocumentImportResult(
-        documents: [
-          ReadingDocument(
-            id: 'invoice',
-            fileName: 'Rechnung.pdf',
-            path: '/synthetic/invoice.pdf',
-            sha256: 'a' * 64,
-            pageCount: 2,
-            sizeBytes: 10,
-            source: DocumentSource.imported,
-            addedAt: DateTime.utc(2026),
-          ),
-        ],
-      );
+  Future<DocumentImportResult> pick({
+    bool multiple = true,
+    DocumentImportBudget budget = const DocumentImportBudget(),
+  }) async => DocumentImportResult(
+    documents: [
+      ReadingDocument(
+        id: 'invoice',
+        fileName: 'Rechnung.pdf',
+        path: '/synthetic/invoice.pdf',
+        sha256: 'a' * 64,
+        pageCount: 2,
+        sizeBytes: 10,
+        source: DocumentSource.imported,
+        addedAt: DateTime.utc(2026),
+      ),
+    ],
+  );
   @override
-  Future<DocumentImportResult> scan() => pick();
+  Future<DocumentImportResult> scan({
+    DocumentImportBudget budget = const DocumentImportBudget(),
+  }) => pick();
   @override
   Future<void> delete(String path) async => deleted.add(path);
 }

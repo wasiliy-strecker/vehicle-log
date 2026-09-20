@@ -10,6 +10,8 @@ import 'package:pdf/widgets.dart' as pw;
 
 import '../../../core/integrity/integrity_copy.dart';
 import '../../../core/files/document_repository.dart';
+import '../../../core/files/bounded_pdf_assembler.dart';
+import '../../../core/persistence/repository_transaction.dart';
 import '../../../core/integrity/integrity_service.dart';
 import '../../../core/files/evidence_photo_asset_repository.dart';
 import '../../../core/utils/id_generator.dart';
@@ -20,10 +22,26 @@ import '../../meters/domain/meter_repositories.dart';
 import '../domain/evidence_export.dart';
 
 class GeneratedEvidenceReport {
-  const GeneratedEvidenceReport({required this.record, required this.bytes});
+  GeneratedEvidenceReport({
+    required EvidenceExportRecord record,
+    required Uint8List bytes,
+  }) : records = [record],
+       _bytes = bytes;
+  GeneratedEvidenceReport.files(List<EvidenceExportRecord> records)
+    : records = List.unmodifiable(records),
+      _bytes = null;
 
-  final EvidenceExportRecord record;
-  final Uint8List bytes;
+  final List<EvidenceExportRecord> records;
+  final Uint8List? _bytes;
+  EvidenceExportRecord get record => records.first;
+  // Compatibility for single-report consumers. The app preview reads files
+  // asynchronously and never materializes all parts together.
+  Uint8List get bytes {
+    if (records.length != 1) {
+      throw StateError('Mehrteiliger Export: Bitte einen Teil auswählen.');
+    }
+    return _bytes ?? File(record.filePath).readAsBytesSync();
+  }
 }
 
 typedef DocumentsDirectoryProvider = Future<Directory> Function();
@@ -35,7 +53,14 @@ class EvidenceReportService {
     DocumentsDirectoryProvider? documentsDirectoryProvider,
     EvidencePhotoAssetRepository? photoAssets,
     this.pdfAssembly = const LocalPdfAssemblyService(),
-  }) : _documentsDirectoryProvider =
+    this.reportAssembler = const BoundedPdfAssembler(),
+    RepositoryTransaction? transaction,
+  }) : transaction =
+           transaction ??
+           (exports is RepositoryTransactionRunner
+               ? (exports as RepositoryTransactionRunner).runTransaction
+               : runWithoutTransaction),
+       _documentsDirectoryProvider =
            documentsDirectoryProvider ?? getApplicationDocumentsDirectory,
        photoAssets = photoAssets ?? LocalEvidencePhotoAssetRepository();
 
@@ -44,6 +69,8 @@ class EvidenceReportService {
   final DocumentsDirectoryProvider _documentsDirectoryProvider;
   final EvidencePhotoAssetRepository photoAssets;
   final PdfAssemblyService pdfAssembly;
+  final BoundedPdfAssembler reportAssembler;
+  final RepositoryTransaction transaction;
 
   Future<void> delete(EvidenceExportRecord record) async {
     await exports.delete(record.id);
@@ -117,137 +144,268 @@ class EvidenceReportService {
   }) async {
     final createdAt = DateTime.now();
     final fonts = await _loadFontBytes();
-    // Historical "allPhotos" remains readable on saved export records only.
     if (photoMode == EvidencePhotoMode.allPhotos) {
       photoMode = EvidencePhotoMode.currentPhotos;
     }
-    final preparedPhotoPaths = await _preparePhotos(
-      readings: readings,
-      photoMode: photoMode,
-    );
+    final withDocuments =
+        photoMode != EvidencePhotoMode.withoutPhotos &&
+        readings.any((r) => r.documents.isNotEmpty);
+    // Validate every attachment before creating any saved report.
+    if (withDocuments) {
+      for (final reading in readings) {
+        for (final document in reading.documents) {
+          final file = File(document.path);
+          if (!await file.exists() ||
+              await integrity.sha256Stream(file.openRead()) !=
+                  document.sha256) {
+            throw StateError(
+              'PDF fehlt oder wurde verändert: ${document.fileName}',
+            );
+          }
+          if (await pdfAssembly.inspect(document.path) != document.pageCount) {
+            throw StateError(
+              'PDF nicht lesbar oder Seitenzahl stimmt nicht überein: ${document.fileName}',
+            );
+          }
+        }
+      }
+    }
     final message = <String, Object?>{
-      'readings': readings.map((reading) => reading.toJson()).toList(),
       'kind': kind.name,
       'photoMode': photoMode.name,
-      'preparedPhotoPaths': preparedPhotoPaths,
       'createdAtMicroseconds': createdAt.microsecondsSinceEpoch,
       'manifestSha256': manifestSha256,
       'reportMeter': reportMeter.toJson(),
       'regularFontBytes': fonts.regular,
       'boldFontBytes': fonts.bold,
     };
-    late final Uint8List bytes;
-    final withDocuments =
-        photoMode != EvidencePhotoMode.withoutPhotos &&
-        readings.any((r) => r.documents.isNotEmpty);
-    if (withDocuments) {
-      // Validate every original before building anything. Never silently omit a PDF.
-      for (final reading in readings) {
-        for (final document in reading.documents) {
-          final file = File(document.path);
-          if (!await file.exists() ||
-              await integrity.sha256Bytes(await file.readAsBytes()) !=
-                  document.sha256) {
-            throw StateError(
-              'PDF fehlt oder wurde verändert: ${document.fileName}',
+    final positions = {
+      for (final (index, reading) in readings.indexed) reading.id: index,
+    };
+    Future<Uint8List> section(
+      List<MeterReading> selected, {
+      String? section,
+      int? number,
+    }) async {
+      final prepared = section == 'overview'
+          ? <String, String>{}
+          : await _preparePhotos(readings: selected, photoMode: photoMode);
+      final result = await compute(_buildPdfInBackground, {
+        ...message,
+        'readings': selected.map((r) => r.toJson()).toList(),
+        'preparedPhotoPaths': prepared,
+        'section': section,
+        'entryNumber': number,
+        'firstNumber': readings.length - positions[selected.first.id]!,
+        'followingReading': positions[selected.last.id]! + 1 < readings.length
+            ? readings[positions[selected.last.id]! + 1].toJson()
+            : null,
+      });
+      return result['bytes']! as Uint8List;
+    }
+
+    Stream<PdfReportPart> source() async* {
+      if (withDocuments) {
+        if (kind == EvidenceExportKind.meterHistory) {
+          for (var offset = 0; offset < readings.length; offset += 200) {
+            yield PdfReportPart.bytes(
+              await section(
+                readings.skip(offset).take(200).toList(),
+                section: 'overview',
+              ),
             );
           }
-          try {
-            if (await pdfAssembly.inspect(document.path) !=
-                document.pageCount) {
-              throw StateError('Seitenzahl stimmt nicht überein');
-            }
-          } catch (error) {
-            throw StateError('PDF nicht lesbar: ${document.fileName}. $error');
+        }
+        for (final (index, reading) in readings.indexed) {
+          final number = kind == EvidenceExportKind.singleReading
+              ? 1
+              : readings.length - index;
+          yield PdfReportPart.bytes(
+            await section([reading], section: 'entry', number: number),
+          );
+          for (final document in reading.documents) {
+            yield PdfReportPart.bytes(
+              await compute(_buildDocumentSeparator, {
+                ...message,
+                'documentName': document.fileName,
+                'pageCount': document.pageCount,
+                'entryNumber': number,
+                'entryTime': readingTimeText(
+                  reading,
+                  DateFormat('dd.MM.yyyy, HH:mm'),
+                ),
+              }),
+            );
+            yield PdfReportPart.file(document.path);
           }
         }
-      }
-      final parts = <PdfReportPart>[];
-      if (kind == EvidenceExportKind.meterHistory) {
-        final overview = await compute(_buildPdfInBackground, {
-          ...message,
-          'section': 'overview',
-        });
-        parts.add(PdfReportPart.bytes(overview['bytes']! as Uint8List));
-      }
-      for (final (index, reading) in readings.indexed) {
-        final number = kind == EvidenceExportKind.singleReading
-            ? 1
-            : readings.length - index;
-        final entry = await compute(_buildPdfInBackground, {
-          ...message,
-          'section': 'entry',
-          'entryNumber': number,
-          'readings': [reading.toJson()],
-        });
-        parts.add(PdfReportPart.bytes(entry['bytes']! as Uint8List));
-        for (final document in reading.documents) {
-          final separator = await compute(_buildDocumentSeparator, {
-            ...message,
-            'documentName': document.fileName,
-            'pageCount': document.pageCount,
-            'entryNumber': number,
-            'entryTime': readingTimeText(
-              reading,
-              DateFormat('dd.MM.yyyy, HH:mm'),
-            ),
-          });
-          parts.add(PdfReportPart.bytes(separator));
-          parts.add(PdfReportPart.file(document.path));
+      } else {
+        // Keep ordinary layouts intact. Bound larger layouts by entries,
+        // photos and text before sending them to the PDF worker.
+        var chunk = <MeterReading>[];
+        var photos = 0;
+        var text = 0;
+        for (final reading in readings) {
+          final nextPhotos = photoMode == EvidencePhotoMode.withoutPhotos
+              ? 0
+              : reading.currentPhotos.length;
+          if (chunk.isNotEmpty &&
+              (chunk.length >= 200 ||
+                  photos + nextPhotos > 20 ||
+                  text + reading.note.length > 50000)) {
+            yield PdfReportPart.bytes(await section(chunk));
+            chunk = [];
+            photos = 0;
+            text = 0;
+          }
+          chunk.add(reading);
+          photos += nextPhotos;
+          text += reading.note.length;
         }
+        if (chunk.isNotEmpty) yield PdfReportPart.bytes(await section(chunk));
       }
-      bytes = await pdfAssembly.assemble(parts);
-    } else {
-      final result = await compute(
-        _buildPdfInBackground,
-        message,
-        debugLabel: 'evidence-pdf-builder',
-      );
-      bytes = result['bytes']! as Uint8List;
     }
-    final manifestSha = manifestSha256;
-    final pdfSha = await integrity.sha256Bytes(bytes);
+
     final id = newLocalId('evidence', now: createdAt);
     final safeLabel = _safeFilePart(reportMeter.label);
     final stamp = DateFormat('yyyyMMdd_HHmmss').format(createdAt);
-    final uniqueSuffix = id.substring(id.length - 6);
-    final variant = switch (photoMode) {
-      EvidencePhotoMode.withoutPhotos => 'kompakt',
-      EvidencePhotoMode.currentPhotos => 'mit_anlagen',
-      EvidencePhotoMode.allPhotos => 'alle_fotos',
-    };
-    final fileName = kind == EvidenceExportKind.singleReading
-        ? 'fahrzeugeintrag_${safeLabel}_${variant}_${stamp}_$uniqueSuffix.pdf'
-        : 'fahrzeugverlauf_${safeLabel}_${variant}_${stamp}_$uniqueSuffix.pdf';
+    final suffix = id.substring(id.length - 6);
+    final variant = photoMode == EvidencePhotoMode.withoutPhotos
+        ? 'kompakt'
+        : 'mit_anlagen';
+    final prefix = kind == EvidenceExportKind.singleReading
+        ? 'fahrzeugeintrag'
+        : 'fahrzeugverlauf';
     final directory = Directory(
       p.join((await _documentsDirectoryProvider()).path, 'evidence_reports'),
     );
     await directory.create(recursive: true);
-    final file = File(p.join(directory.path, fileName));
-    final record = EvidenceExportRecord(
-      id: id,
-      meterId: readings.first.meterId,
-      kind: kind,
-      readingIds: readings.map((reading) => reading.id).toList(),
-      createdAt: createdAt.toUtc(),
-      fileName: fileName,
-      filePath: file.path,
-      pdfSha256: pdfSha,
-      manifestSha256: manifestSha,
-      photoMode: photoMode,
-    );
+    final staging = await directory.createTemp('.preparing_');
+    final records = <EvidenceExportRecord>[];
+    final owned = <File>[];
+    var committed = false;
     try {
-      await file.writeAsBytes(bytes, flush: true);
-      await exports.save(record);
+      final files = await reportAssembler.assemble(
+        source: source(),
+        staging: staging,
+        cover: (index, total) =>
+            _partCover(reportMeter, index, total, fonts, createdAt),
+      );
+      for (final (index, source) in files.indexed) {
+        final part = files.length == 1
+            ? ''
+            : '_Teil_${index + 1}_von_${files.length}';
+        final fileName =
+            '${prefix}_${safeLabel}_${variant}_${stamp}_$suffix$part.pdf';
+        final file = File(p.join(directory.path, fileName));
+        owned.add(file);
+        await source.rename(file.path);
+        records.add(
+          EvidenceExportRecord(
+            id: files.length == 1
+                ? id
+                : '${id}_${(files.length - index).toString().padLeft(8, '0')}',
+            meterId: readings.first.meterId,
+            kind: kind,
+            readingIds: readings.map((r) => r.id).toList(),
+            createdAt: createdAt.toUtc(),
+            fileName: fileName,
+            filePath: file.path,
+            pdfSha256: await integrity.sha256Stream(file.openRead()),
+            manifestSha256: manifestSha256,
+            photoMode: photoMode,
+          ),
+        );
+      }
+      await transaction(() async {
+        for (final record in records) {
+          await exports.save(record);
+        }
+      });
+      committed = true;
+      return GeneratedEvidenceReport.files(records);
     } on Object {
-      try {
-        if (await file.exists()) await file.delete();
-      } on Object {
-        // Preserve the actual write/save error if cleanup also fails.
+      // The native repository uses one transaction. Remove possible partial
+      // writes too for replaceable repositories without transaction support.
+      for (final record in records) {
+        try {
+          await exports.delete(record.id);
+        } on Object {
+          /* Keep the original error. */
+        }
       }
       rethrow;
+    } finally {
+      if (!committed) {
+        try {
+          final referenced = (await exports.loadAll())
+              .map((e) => e.filePath)
+              .toSet();
+          for (final file in owned) {
+            if (!referenced.contains(file.path) && await file.exists()) {
+              await file.delete();
+            }
+          }
+        } on Object {
+          /* Never delete a possibly referenced report. */
+        }
+      }
+      try {
+        await staging.delete(recursive: true);
+      } on Object {
+        /* Cleanup is best effort. */
+      }
     }
-    return GeneratedEvidenceReport(record: record, bytes: bytes);
+  }
+
+  static Future<Uint8List> _partCover(
+    MeterSnapshot meter,
+    int index,
+    int total,
+    _ReportFontBytes fonts,
+    DateTime createdAt,
+  ) async {
+    final pdf = pw.Document();
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        theme: pw.ThemeData.withFont(
+          base: pw.Font.ttf(ByteData.sublistView(fonts.regular)),
+          bold: pw.Font.ttf(ByteData.sublistView(fonts.bold)),
+        ),
+        build: (_) => pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Text(
+              'FAHRZEUGAKTE',
+              style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.SizedBox(height: 24),
+            pw.Text(meter.label, style: const pw.TextStyle(fontSize: 20)),
+            pw.SizedBox(height: 16),
+            pw.Text(
+              'Fahrzeugprotokoll – Teil $index von $total',
+              style: const pw.TextStyle(fontSize: 18),
+            ),
+            pw.SizedBox(height: 16),
+            pw.Text(
+              'Erstellt am ${DateFormat('dd.MM.yyyy, HH:mm').format(createdAt)}',
+            ),
+            pw.SizedBox(height: 24),
+            pw.Text(
+              'Dieser Teil gehört zu einem zusammenhängenden Protokoll. Bitte alle $total Teile gemeinsam aufbewahren.',
+            ),
+            if (index > 1) ...[
+              pw.SizedBox(height: 12),
+              pw.Text(
+                'Fortsetzung aus Teil ${index - 1}. Einträge oder Dokumente können über die Teilgrenze hinweg fortgesetzt werden.',
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+    return pdf.save();
   }
 
   Future<Map<String, String>> _preparePhotos({
@@ -323,6 +481,11 @@ class EvidenceReportService {
     final manifestSha = message['manifestSha256']! as String;
     final section = message['section'] as String?;
     final entryNumber = message['entryNumber'] as int? ?? 1;
+    final firstNumber = message['firstNumber'] as int? ?? readings.length;
+    final followingJson = message['followingReading'];
+    final followingReading = followingJson is Map
+        ? MeterReading.fromJson(Map<String, dynamic>.from(followingJson))
+        : null;
     final document = pw.Document(
       title: 'Fahrzeugprotokoll',
       author: 'Fahrzeugakte',
@@ -414,13 +577,18 @@ class EvidenceReportService {
             ),
           if (section != 'entry' &&
               kind == EvidenceExportKind.meterHistory) ...[
-            _historyTable(readings, date),
+            _historyTable(
+              readings,
+              date,
+              firstNumber: firstNumber,
+              followingReading: followingReading,
+            ),
             if (section != 'overview')
               for (final (index, reading) in readings.indexed)
                 if (_hasReadingDetails(reading, reportMeter, photoMode)) ...[
                   ..._readingSection(
                     reading: reading,
-                    number: readings.length - index,
+                    number: firstNumber - index,
                     date: date,
                     photoMode: photoMode,
                     photoAssets: photoAssets,
@@ -548,8 +716,14 @@ class EvidenceReportService {
         data: rows,
       );
 
-  static pw.Widget _historyTable(List<MeterReading> readings, DateFormat date) {
-    final rows = historyTableData(readings, date);
+  static pw.Widget _historyTable(
+    List<MeterReading> readings,
+    DateFormat date, {
+    int? firstNumber,
+    MeterReading? followingReading,
+  }) {
+    final context = [...readings, ?followingReading];
+    final rows = historyTableData(context, date);
     return pw.TableHelper.fromTextArray(
       headers: const ['Nr.', 'Zeitpunkt', 'Eintrag', 'Differenz'],
       headerStyle: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
@@ -571,14 +745,14 @@ class EvidenceReportService {
         for (var index = 0; index < readings.length; index++)
           [
             // The oldest reading is 1 even though the newest is shown first.
-            '${readings.length - index}',
+            '${(firstNumber ?? readings.length) - index}',
             rows[index][0],
             rows[index][1],
-            index < readings.length - 1 &&
-                    readings[index].canCompareGrowthWith(readings[index + 1])
+            index < context.length - 1 &&
+                    readings[index].canCompareGrowthWith(context[index + 1])
                 ? _historyProgress(
                     readings[index],
-                    readings[index + 1],
+                    context[index + 1],
                     rows[index][2],
                   )
                 : rows[index][2],

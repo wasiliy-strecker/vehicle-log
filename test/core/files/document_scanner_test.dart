@@ -27,6 +27,22 @@ void main() {
         .setMockMethodCallHandler(lifecycle, null);
   });
 
+  test('scanner receives the remaining eight pages', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          if (call.method == 'vision#closeDocumentScanner') return null;
+          expect(((call.arguments as Map)['options'] as Map)['pageLimit'], 8);
+          return {
+            'images': <String>[],
+            'pdf': {'uri': 'file:///tmp/remaining.pdf', 'pageCount': 8},
+          };
+        });
+    expect(
+      await const AndroidDocumentScannerRepository().scan(pageLimit: 8),
+      '/tmp/remaining.pdf',
+    );
+  });
+
   test(
     'scanner uses Contract Manager multi-page settings and returns the PDF',
     () async {

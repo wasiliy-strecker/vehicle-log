@@ -71,7 +71,9 @@ class EvidenceExportCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          title,
+                          export.partLabel == null
+                              ? title
+                              : '$title · ${export.partLabel}',
                           style: Theme.of(context).textTheme.titleMedium
                               ?.copyWith(
                                 color: colors.onSecondaryContainer,

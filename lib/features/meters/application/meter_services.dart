@@ -1,3 +1,4 @@
+import '../../../core/files/pdf_limits.dart';
 import 'dart:async';
 
 import 'package:universal_io/io.dart';
@@ -230,6 +231,7 @@ class MeterReadingService {
         photoList ?? [if (photo != null) _photoVersion(photo)];
     _validatePhotos(currentPhotos);
     _validateDocuments(documents);
+    _validateDocumentBudget(const [], documents);
     _validateCost(costCents);
     final first = currentPhotos.firstOrNull;
     value = hasMeasurement
@@ -294,6 +296,7 @@ class MeterReadingService {
     documents ??= existing.documents;
     _validateCost(costCents);
     _validateDocuments(documents);
+    _validateDocumentBudget(existing.documents, documents);
     final currentDocuments = {for (final d in existing.documents) d.id: d};
     final historicIds = existing.documentHistory.map((d) => d.id).toSet();
     for (final doc in documents) {
@@ -536,6 +539,30 @@ class MeterReadingService {
   void _validateCost(int? cost) {
     if (cost != null && (cost < 0 || cost > 99999999999)) {
       throw const FormatException('Bitte einen gültigen Euro-Betrag angeben.');
+    }
+  }
+
+  void _validateDocumentBudget(
+    List<ReadingDocument> previous,
+    List<ReadingDocument> next,
+  ) {
+    final oldIds = previous.map((d) => d.id).toSet();
+    final added = next.where((d) => !oldIds.contains(d.id));
+    if (added.isEmpty) return;
+    final retained = next.where((d) => oldIds.contains(d.id));
+    final oldPages = previous.fold(0, (sum, d) => sum + d.pageCount);
+    final oldBytes = previous.fold(0, (sum, d) => sum + d.sizeBytes);
+    var budget = DocumentImportBudget(
+      pages:
+          (oldPages > PdfLimits.entryPages ? oldPages : PdfLimits.entryPages) -
+          retained.fold(0, (sum, d) => sum + d.pageCount),
+      bytes:
+          (oldBytes > PdfLimits.entryBytes ? oldBytes : PdfLimits.entryBytes) -
+          retained.fold(0, (sum, d) => sum + d.sizeBytes),
+    );
+    for (final doc in added) {
+      budget.validate(doc.pageCount, doc.sizeBytes);
+      budget = budget.consume(doc.pageCount, doc.sizeBytes);
     }
   }
 

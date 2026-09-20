@@ -646,7 +646,11 @@ LEFT JOIN reading_records AS latest
 ORDER BY meter.label COLLATE NOCASE, meter.id
 ''';
 
-class DriftEvidenceExportRepository implements EvidenceExportRepository {
+class DriftEvidenceExportRepository
+    implements EvidenceExportRepository, RepositoryTransactionRunner {
+  @override
+  Future<void> runTransaction(Future<void> Function() operation) =>
+      database.transaction(operation);
   const DriftEvidenceExportRepository(this.database);
 
   final AppDatabase database;

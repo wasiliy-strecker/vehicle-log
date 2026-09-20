@@ -46,6 +46,11 @@ class EvidenceExportRecord {
   final String manifestSha256;
   final EvidencePhotoMode photoMode;
 
+  String? get partLabel {
+    final match = RegExp(r'_Teil_(\d+)_von_(\d+)\.pdf$').firstMatch(fileName);
+    return match == null ? null : 'Teil ${match[1]} von ${match[2]}';
+  }
+
   Map<String, dynamic> toJson() => {
     'id': id,
     'meterId': meterId,

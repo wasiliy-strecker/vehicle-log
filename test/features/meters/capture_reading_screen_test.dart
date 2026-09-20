@@ -90,6 +90,11 @@ void main() {
     expect(find.text('Einheit des Eintrags'), findsOneWidget);
     expect(find.text('GJ'), findsWidgets);
     expect(find.text('Eigene Einheit dieses Fahrzeugs'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Datum & Uhrzeit ändern'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('Datum & Uhrzeit ändern'), findsOneWidget);
     expect(
       tester.widget<ListView>(find.byType(ListView)).keyboardDismissBehavior,
@@ -257,7 +262,11 @@ void main() {
       FocusManager.instance.primaryFocus?.unfocus();
       await tester.pumpAndSettle();
       final save = find.text('Eintrag bestätigen und speichern');
-      await tester.ensureVisible(save);
+      await tester.scrollUntilVisible(
+        save,
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.tap(save);
       await tester.pumpAndSettle();
 

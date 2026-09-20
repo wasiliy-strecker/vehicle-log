@@ -188,3 +188,30 @@ installierte Dev-APK vom 19.09.2026 um 06:32 enthielt ihn jedoch noch nicht.
 Die für das native Icon notwendige APK-Aktualisierung liefert den aktuellen
 Dart-Stand dauerhaft aus, einschließlich Datumsauswahl und Bearbeiten ohne
 Korrekturverlauf. Vor Installation Paket, Debug-Status und Signatur vergleichen.
+
+
+## Interner Release 1.0.0+2
+
+Autorisierte Erweiterung vom 20.09.2026: Neue PDF-Anhänge haben ein gemeinsames
+Budget von 20 Seiten und 50 MB pro Eintrag sowie 25 MB pro Datei. Scanner,
+Import, Entwurf und Speicherdienst prüfen die Grenzen. Bestandsüberschreitungen
+bleiben lesbar und wiederherstellbar. MB bedeutet 1.000.000 Bytes.
+
+Berichte werden dateibasiert auf höchstens 100 Seiten und 50 MB je Teil
+begrenzt. Die tatsächliche Ausgabe wird einschließlich Zuordnungsseiten
+geprüft. Quellen werden in Reihenfolge verarbeitet. Globale Eintragsnummern
+und Kilometerdifferenzen bleiben auch an Verarbeitungsgrenzen erhalten.
+Die Vorschau lädt nur den ausgewählten Teil. Gemeinsames Teilen verwendet
+Dateipfade. Alle Datensätze eines Exports werden gemeinsam gespeichert.
+
+Backup-Importe verwenden auf Android eine gemeinsame Datenbanktransaktion.
+Reparierte Dokumente bekommen neue lokale Pfade, die erst beim Commit wirksam
+werden. Vorhandene Dateien, fachliche Daten, Zeitpunkte und Quellhashes bleiben
+bei Fehlern unverändert. Erinnerungen und Dateibereinigung erfolgen nach dem
+Commit. Schema 8 und Backupformat 6 bleiben unverändert.
+
+Nachweise: `atomic_restore_test.dart`, `pdf_limits_test.dart`,
+`document_draft_test.dart`, `document_scanner_test.dart` und
+`multipart_export_test.dart` sowie die vollständige bestehende Suite.
+Die eingefrorenen Referenzhashes bleiben unverändert. Nur die dokumentierten
+lokalen Abweichungen werden nachgeführt.

@@ -178,7 +178,14 @@ void main() {
       );
       await File(result.documents.first.path).delete();
       await restore.restore(saved.path, 'test-password');
-      expect(await File(result.documents.first.path).exists(), isTrue);
+      final repairedReading = (await targetReadings.findById(changed.id))!;
+      expect(
+        repairedReading.documents.first.path,
+        isNot(result.documents.first.path),
+      );
+      expect(await File(repairedReading.documents.first.path).exists(), isTrue);
+      expect(repairedReading.updatedAt, result.updatedAt);
+      expect(repairedReading.manifestSha256, result.manifestSha256);
       final cleared = await service.update(
         existing: changed,
         value: changed.value,

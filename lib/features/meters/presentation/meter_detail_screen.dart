@@ -272,10 +272,7 @@ class _MeterDetailScreenState extends ConsumerState<MeterDetailScreen> {
       }
       return;
     }
-    final report = GeneratedEvidenceReport(
-      record: record,
-      bytes: await file.readAsBytes(),
-    );
+    final report = GeneratedEvidenceReport.files([record]);
     if (mounted) await context.pushNamed('evidencePreview', extra: report);
   }
 

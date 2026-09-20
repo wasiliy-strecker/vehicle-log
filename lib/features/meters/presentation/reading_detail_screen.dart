@@ -184,10 +184,7 @@ class _ReadingDetailScreenState extends ConsumerState<ReadingDetailScreen> {
       }
       return;
     }
-    final report = GeneratedEvidenceReport(
-      record: record,
-      bytes: await file.readAsBytes(),
-    );
+    final report = GeneratedEvidenceReport.files([record]);
     if (mounted) await context.pushNamed('evidencePreview', extra: report);
   }
 

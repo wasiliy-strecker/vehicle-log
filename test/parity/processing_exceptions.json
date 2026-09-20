@@ -89,8 +89,8 @@
     },
     "lib/features/meters/data/drift_meter_repositories.dart": {
       "sourceSha256": "8c5a4c08c3d4ab76a402d2a0f450f476d074e7f3275f5509c0dff51974345e1d",
-      "localSha256": "4bbb89b1c3262efacfe3bba60998ba4062746198df6439e72cec32d37325b4db",
-      "reason": "Persist plant care fields and ordered photos, expose custom activity labels in the dashboard and search, query reusable labels without loading photo metadata, and match custom labels with escaped Unicode-aware literal searches like the in-memory repository. Fahrzeugakte: Schema 8 persists VIN, registration, workshop, integer-cent costs and ordered current/historical PDFs with revision changes. Migrations preserve existing manifests. Native search includes the workshop. Technical PDF release audit protects attachment files with committed database deletion and reference-aware cleanup. Notification refresh failures cannot invalidate committed entries.",
+      "localSha256": "452cbbe37bc23de5fa60d2b2b84a56fede52db8468ea90a59882fa9a7a8e71b9",
+      "reason": "Persist plant care fields and ordered photos, expose custom activity labels in the dashboard and search, query reusable labels without loading photo metadata, and match custom labels with escaped Unicode-aware literal searches like the in-memory repository. Fahrzeugakte: Schema 8 persists VIN, registration, workshop, integer-cent costs and ordered current/historical PDFs with revision changes. Migrations preserve existing manifests. Native search includes the workshop. Technical PDF release audit protects attachment files with committed database deletion and reference-aware cleanup. Notification refresh failures cannot invalidate committed entries. Authorized internal-release preparation adds bounded PDF imports, file-backed multipart reports and atomic backup restoration with reference-safe file cleanup.",
       "tests": [
         "test/features/meters/multiple_photos_test.dart",
         "test/features/meters/plant_multiple_photos_test.dart",
@@ -98,8 +98,11 @@
         "test/core/persistence/vehicle_migration_test.dart",
         "test/features/meters/vehicle_documents_test.dart",
         "test/features/meters/attachment_deletion_safety_test.dart",
-        "test/features/meters/editing_without_history_test.dart"
-      ]
+        "test/features/meters/editing_without_history_test.dart",
+        "test/features/backup/atomic_restore_test.dart",
+        "test/features/evidence/multipart_export_test.dart"
+      ],
+      "localPath": "lib/features/meters/data/drift_meter_repositories.dart"
     },
     "lib/features/meters/data/in_memory_meter_repositories.dart": {
       "sourceSha256": "8a108d2cdae1fff1d670d80c5846bc2c8d6ce679d29bcc9d34f08e36a53b1575",
@@ -130,25 +133,30 @@
     },
     "lib/core/integrity/integrity_service.dart": {
       "sourceSha256": "8d6a25dbc93d39a8067b46ee42ac20429c78f15210373f2309c88646dc703a92",
-      "localSha256": "aa27e4b5d7e3095df464ae4910e0204339e0858d2042bb06fcea4785ab79c71f",
-      "reason": "Hash all ordered current photos without device-local paths, preserving legacy serialization and plant care fields. Fahrzeugakte: Include PDF identity, order and metadata in manifests while excluding relocatable current/historical PDF paths, matching existing photo handling.",
+      "localSha256": "0939ee5c9dd2e3e766e3e32733d5f247c0a5005fe178112a9f7f5f62c5b661be",
+      "reason": "Hash all ordered current photos without device-local paths, preserving legacy serialization and plant care fields. Fahrzeugakte: Include PDF identity, order and metadata in manifests while excluding relocatable current/historical PDF paths, matching existing photo handling. Authorized internal-release preparation adds bounded PDF imports, file-backed multipart reports and atomic backup restoration with reference-safe file cleanup.",
       "tests": [
         "test/features/meters/multiple_photos_test.dart",
         "test/features/meters/plant_multiple_photos_test.dart",
-        "test/features/meters/vehicle_documents_test.dart"
-      ]
+        "test/features/meters/vehicle_documents_test.dart",
+        "test/core/files/pdf_limits_test.dart",
+        "test/features/meters/document_draft_test.dart"
+      ],
+      "localPath": "lib/core/integrity/integrity_service.dart"
     },
     "lib/features/evidence/domain/evidence_export.dart": {
       "sourceSha256": "9a5a050f97354b76002f23e3a16cc8728d2d7b9f47fc97608478bd80c6842e51",
-      "localSha256": "0cd2ba4ec8c191feb22cab7103836c82a040bacecfed620795e9b5db3fb9928f",
-      "reason": "Use the shared plural current-photo mode label while keeping legacy allPhotos readable. Fahrzeugakte: Vehicle report labels, additional metadata and attachment-aware export choices. Full PDF exports append original PDF pages after each entry with separators and validate completeness. Compact exports list filenames. Existing photo layout is retained.",
+      "localSha256": "7fca5472dda8026a4e99430b2ee860c5584801bbe779aaeea9ed7bf0de630b4e",
+      "reason": "Use the shared plural current-photo mode label while keeping legacy allPhotos readable. Fahrzeugakte: Vehicle report labels, additional metadata and attachment-aware export choices. Full PDF exports append original PDF pages after each entry with separators and validate completeness. Compact exports list filenames. Existing photo layout is retained. Authorized internal-release preparation adds bounded PDF imports, file-backed multipart reports and atomic backup restoration with reference-safe file cleanup.",
       "tests": [
         "test/features/evidence/evidence_photo_mode_sheet_test.dart",
         "test/features/evidence/multiple_photo_pdf_test.dart",
         "test/features/evidence/vehicle_pdf_attachments_test.dart",
         "test/features/evidence/evidence_report_service_test.dart",
-        "test/features/meters/capture_reading_screen_test.dart"
-      ]
+        "test/features/meters/capture_reading_screen_test.dart",
+        "test/features/evidence/multipart_export_test.dart"
+      ],
+      "localPath": "lib/features/evidence/domain/evidence_export.dart"
     },
     "lib/features/meters/application/reading_revision_photos.dart": {
       "sourceSha256": "8151a48a68abd61860871628fca19baf864ca3016b590cc7adfe149c43637905",

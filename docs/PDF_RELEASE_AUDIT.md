@@ -1,5 +1,9 @@
 # Technische PDF-Releaseprüfung
 
+Dieser Bericht dokumentiert die frühere Prüfung von Version 1.0.0+1.
+Den nachfolgenden Stand mit PDF-Limits, atomarer Wiederherstellung und eigener
+Store-Signierung dokumentiert [Interner Play-Test 1.0.0 (3)](INTERNAL_RELEASE_1.0.0_3.md).
+
 Stand: 20.09.2026. Geprüfte Ausgangsversion: `1.0.0+1`, Commit `7f3641b`.
 Die Prüfung umfasst den aktuellen Quellstand einschließlich der in dieser
 Aufgabe ergänzten Fehlerkorrekturen. Die Versionsnummer wurde nicht erhöht.

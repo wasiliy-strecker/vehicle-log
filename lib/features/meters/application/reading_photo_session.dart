@@ -378,6 +378,28 @@ class ReadingPhotoSession extends ChangeNotifier {
     readingId = newLocalId('reading');
   }
 
+  int get documentPages => documents.fold(0, (sum, doc) => sum + doc.pageCount);
+  int get documentBytes => documents.fold(0, (sum, doc) => sum + doc.sizeBytes);
+
+  DocumentImportBudget documentBudget({String? replacementId}) {
+    final retained = documents.where((d) => d.id != replacementId);
+    final pages = retained.fold(0, (sum, d) => sum + d.pageCount);
+    final bytes = retained.fold(0, (sum, d) => sum + d.sizeBytes);
+    // Existing oversized entries may shrink, but cannot grow through a replacement.
+    final pageCeiling =
+        replacementId != null && documentPages > PdfLimits.entryPages
+        ? documentPages
+        : PdfLimits.entryPages;
+    final byteCeiling =
+        replacementId != null && documentBytes > PdfLimits.entryBytes
+        ? documentBytes
+        : PdfLimits.entryBytes;
+    return DocumentImportBudget(
+      pages: pageCeiling - pages,
+      bytes: byteCeiling - bytes,
+    );
+  }
+
   Future<DocumentImportResult> captureDocuments({
     required bool scan,
     required Map<String, dynamic> formFields,
@@ -392,9 +414,34 @@ class ReadingPhotoSession extends ChangeNotifier {
     try {
       await _persist();
       if (_closed) return const DocumentImportResult();
-      final result = scan
-          ? await documentRepository!.scan()
-          : await documentRepository!.pick(multiple: replacementId == null);
+      var budget = documentBudget(replacementId: replacementId);
+      if (budget.exhausted) {
+        throw const FormatException(
+          'Das PDF-Limit ist erreicht. Entferne oder ersetze einen Anhang.',
+        );
+      }
+      final selected = scan
+          ? await documentRepository!.scan(budget: budget)
+          : await documentRepository!.pick(
+              multiple: replacementId == null,
+              budget: budget,
+            );
+      final accepted = <ReadingDocument>[];
+      final failures = [...selected.failures];
+      for (final doc in selected.documents) {
+        try {
+          budget.validate(doc.pageCount, doc.sizeBytes);
+          accepted.add(doc);
+          budget = budget.consume(doc.pageCount, doc.sizeBytes);
+        } on FormatException catch (error) {
+          failures.add('${doc.fileName}: ${error.message}');
+          await documentRepository!.delete(doc.path);
+        }
+      }
+      final result = DocumentImportResult(
+        documents: accepted,
+        failures: failures,
+      );
       if (_closed) {
         for (final doc in result.documents) {
           await documentRepository!.delete(doc.path);

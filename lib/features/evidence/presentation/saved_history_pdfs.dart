@@ -228,7 +228,11 @@ class _HistoryExportTile extends ConsumerWidget {
         export: export,
         title: 'Fahrzeugprotokoll · Fahrzeugverlauf',
         detail:
-            '${export.readingIds.length == 1 ? '1 Eintrag enthalten' : '${export.readingIds.length} Einträge enthalten'}\n${export.photoMode.labelFor(export.kind)}',
+            '${export.partLabel != null
+                ? 'Gesamtverlauf: ${export.readingIds.length} Einträge'
+                : export.readingIds.length == 1
+                ? '1 Eintrag enthalten'
+                : '${export.readingIds.length} Einträge enthalten'}\n${export.photoMode.labelFor(export.kind)}',
         fileAvailable: available,
         onTap: available ? onOpen : null,
         deleting: deleting,

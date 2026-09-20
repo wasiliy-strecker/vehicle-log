@@ -135,6 +135,7 @@ final repositoryTransactionProvider = Provider<RepositoryTransaction>((ref) {
 
 final evidenceReportServiceProvider = Provider<EvidenceReportService>(
   (ref) => EvidenceReportService(
+    transaction: ref.watch(repositoryTransactionProvider),
     exports: ref.watch(evidenceExportRepositoryProvider),
     integrity: ref.watch(integrityServiceProvider),
     photoAssets: ref.watch(evidencePhotoAssetRepositoryProvider),
@@ -143,6 +144,7 @@ final evidenceReportServiceProvider = Provider<EvidenceReportService>(
 
 final encryptedBackupServiceProvider = Provider<EncryptedBackupService>(
   (ref) => EncryptedBackupService(
+    transaction: ref.watch(repositoryTransactionProvider),
     meters: ref.watch(meterRepositoryProvider),
     readings: ref.watch(meterReadingRepositoryProvider),
     exports: ref.watch(evidenceExportRepositoryProvider),

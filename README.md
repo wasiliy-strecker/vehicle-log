@@ -34,7 +34,11 @@ Seiten lassen sich im Scanner zuschneiden, drehen und bereinigen. Die fertige
 PDF wird zum Eintrag kopiert. Eine automatische Rechnungsanalyse findet nicht
 statt. Es gibt keinen AI-Gateway-Aufruf.
 
-Fotos und PDFs können gemeinsam zu einem Eintrag gehören. Original-PDFs werden
+Fotos und PDFs können gemeinsam zu einem Eintrag gehören. Neue PDF-Anhänge
+sind auf insgesamt 20 Seiten und 50 MB je Eintrag begrenzt. Eine einzelne PDF
+darf höchstens 25 MB groß sein. Der Scanner verwendet die verbleibende
+Seitenzahl. MB bezeichnet 1.000.000 Bytes. Größere Bestandsanhänge bleiben
+lesbar und backupfähig, können aber nicht weiter vergrößert werden. Original-PDFs werden
 unverändert im privaten App-Speicher abgelegt. Passwortgeschützte, beschädigte
 und leere PDFs werden abgewiesen. Die Dokumentliste bietet Öffnen, Teilen,
 Ersetzen, Entfernen und Sortieren. Neue Änderungen archivieren keine früheren Anhänge.
@@ -53,7 +57,11 @@ werden. Foto-Picker-Wiederherstellung folgt unverändert der Vorlage.
 „Kompakt ohne Anhänge“ nennt die Dokumente. „Mit Fotos und PDFs“ enthält
 die aktuellen Fotos und direkt nach jedem Eintrag dessen PDFs in gespeicherter
 Reihenfolge. Trennseiten ordnen die Originalseiten zu. Text und Seitenformat
-bleiben erhalten. Fehlende oder veränderte Anhänge verhindern einen
+bleiben erhalten. Große Protokolle werden automatisch auf mehrere PDFs mit
+je höchstens 100 Seiten einschließlich Trennseiten und 50 MB verteilt.
+Alle Teile sind einzeln auswählbar und gemeinsam teilbar. Eine einzelne
+Bestandsseite, die bereits die Dateigrenze überschreitet, wird mit einer
+verständlichen Fehlermeldung abgewiesen. Es werden keine Seiten ausgelassen. Fehlende oder veränderte Anhänge verhindern einen
 unvollständigen Export. Bereits erstellte Protokolle bleiben unverändert.
 
 ## Daten und Entwicklung
@@ -107,7 +115,7 @@ Normale UI-Änderungen werden per Hot Reload übernommen.
 
 Native Erinnerungstests: im Verzeichnis `android/` mit vollständigem JDK
 `./gradlew :app:testDevDebugUnitTest --max-workers=2` ausführen.
-Store-Signierung und Veröffentlichung sind noch nicht eingerichtet.
+Die app-eigene Store-Signierung ist lokal eingerichtet. Upload und Veröffentlichung erfolgen separat.
 Der spätere Ablauf steht in [ANDROID_RELEASES.md](docs/ANDROID_RELEASES.md).
 
 Quellcode: [Mozilla Public License 2.0](LICENSE).

@@ -40,6 +40,23 @@ Google Play Services Scannerkomponenten herunterladen. Für die Dienste von
 Google gelten deren [Datenschutzbedingungen](https://policies.google.com/privacy).
 Die App überträgt gescannte Dokumente nicht an einen eigenen Server.
 
+Google dokumentiert für ML Kit außerdem technische Diagnose- und
+Nutzungsmetriken. Dazu gehören Informationen über Gerät und App,
+Installations- oder Gerätekennungen, Laufzeiten, verwendete Funktionen und
+Fehlercodes. Google nutzt diese Daten zur Diagnose, Wartung und Verbesserung
+seiner Dienste. Nach Angaben von Google werden die Übertragungen mit HTTPS
+verschlüsselt. Dokumentbilder, erkannter Text und Verarbeitungsergebnisse
+werden laut ML-Kit-Dokumentation auf dem Gerät verarbeitet und nicht als
+Scaninhalt an Google übertragen.
+
+Der Scanner wird freiwillig gestartet. Vorhandene PDFs lassen sich auch ohne
+Scanner importieren. Die Store-App fordert keine eigene Internetberechtigung
+an. Dies ist keine Zusage, dass die separat installierten Google Play Services
+keine technischen Daten übertragen. Weitere Informationen stehen in den
+[ML-Kit-Datenschutzhinweisen](https://developers.google.com/ml-kit/terms) und
+[Angaben zur Datensicherheit](https://developers.google.com/ml-kit/android-data-disclosure).
+
+
 ## Teilen und externe Links
 
 Nur wenn Sie selbst eine PDF oder ein Backup speichern oder teilen, wird die

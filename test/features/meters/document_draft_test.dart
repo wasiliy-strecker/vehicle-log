@@ -23,18 +23,25 @@ ReadingDocument _document(String id) => ReadingDocument(
 class _Documents implements DocumentRepository {
   final deleted = <String>[];
   final multipleSelections = <bool>[];
+  final budgets = <DocumentImportBudget>[];
   DocumentImportResult next = const DocumentImportResult();
   Future<void> Function()? before;
   Future<void> Function(String)? onDelete;
   @override
-  Future<DocumentImportResult> pick({bool multiple = true}) async {
+  Future<DocumentImportResult> pick({
+    bool multiple = true,
+    DocumentImportBudget budget = const DocumentImportBudget(),
+  }) async {
     multipleSelections.add(multiple);
+    budgets.add(budget);
     await before?.call();
     return next;
   }
 
   @override
-  Future<DocumentImportResult> scan() => pick();
+  Future<DocumentImportResult> scan({
+    DocumentImportBudget budget = const DocumentImportBudget(),
+  }) => pick(budget: budget);
   @override
   Future<void> delete(String path) async {
     deleted.add(path);
@@ -54,6 +61,64 @@ class _FailingDraftStore extends MemoryPhotoDraftStore {
 }
 
 void main() {
+  ReadingDocument pages(String id, int count) =>
+      ReadingDocument.fromJson({..._document(id).toJson(), 'pageCount': count});
+  ReadingPhotoSession sessionWith(
+    List<ReadingDocument> documents,
+    _Documents repository,
+  ) {
+    final original = sampleReading(
+      source: ReadingSource.manual,
+    ).copyWith(documents: documents);
+    return ReadingPhotoSession(
+      route: '/reading/reading/edit',
+      original: original,
+      repository: const UnsupportedMeterPhotoCaptureRepository(),
+      documentRepository: repository,
+      store: MemoryPhotoDraftStore(),
+      readings: MemoryReadingRepository()..items[original.id] = original,
+    );
+  }
+
+  test(
+    'remaining pages reach the scanner and rejected selections leave no files',
+    () async {
+      final repository = _Documents()
+        ..next = DocumentImportResult(
+          documents: [pages('accepted', 8), pages('rejected', 1)],
+        );
+      final session = sessionWith([pages('old', 12)], repository);
+      final result = await session.captureDocuments(scan: true, formFields: {});
+      expect(repository.budgets.single.pages, 8);
+      expect(session.documentPages, 20);
+      expect(result.failures, hasLength(1));
+      expect(repository.deleted, ['/synthetic/rejected.pdf']);
+      await session.discard();
+      expect(repository.deleted, contains('/synthetic/accepted.pdf'));
+      expect(repository.deleted, isNot(contains('/synthetic/old.pdf')));
+    },
+  );
+  test(
+    'replacement receives its own pages back and legacy entries can shrink',
+    () async {
+      final repository = _Documents()
+        ..next = DocumentImportResult(documents: [pages('replacement', 10)]);
+      final session = sessionWith([pages('legacy', 30)], repository);
+      expect(session.documentBudget().exhausted, isTrue);
+      await session.captureDocuments(
+        scan: false,
+        replacementId: 'legacy',
+        formFields: {},
+      );
+      expect(repository.budgets.single.pages, 30);
+      expect(session.documentPages, 10);
+      expect(repository.deleted, isEmpty);
+      await session.discard();
+      expect(session.documentPages, 30);
+      expect(repository.deleted, ['/synthetic/replacement.pdf']);
+    },
+  );
+
   test(
     'failed import persistence keeps originals and removes only new files',
     () async {

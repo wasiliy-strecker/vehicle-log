@@ -9,6 +9,8 @@ import 'package:universal_io/io.dart';
 
 import '../../features/meters/domain/reading_document.dart';
 import '../integrity/integrity_service.dart';
+import 'pdf_limits.dart';
+export 'pdf_limits.dart';
 import '../utils/id_generator.dart';
 
 class DocumentImportResult {
@@ -21,13 +23,18 @@ class DocumentImportResult {
 }
 
 abstract interface class DocumentRepository {
-  Future<DocumentImportResult> pick({bool multiple = true});
-  Future<DocumentImportResult> scan();
+  Future<DocumentImportResult> pick({
+    bool multiple = true,
+    DocumentImportBudget budget = const DocumentImportBudget(),
+  });
+  Future<DocumentImportResult> scan({
+    DocumentImportBudget budget = const DocumentImportBudget(),
+  });
   Future<void> delete(String path);
 }
 
 abstract interface class DocumentScannerRepository {
-  Future<String?> scan();
+  Future<String?> scan({int pageLimit = PdfLimits.entryPages});
 }
 
 /// Same Android scanner and settings as AI Contract Manager.
@@ -38,7 +45,7 @@ class AndroidDocumentScannerRepository implements DocumentScannerRepository {
   );
 
   @override
-  Future<String?> scan() async {
+  Future<String?> scan({int pageLimit = PdfLimits.entryPages}) async {
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
       throw const FormatException(
         'Dokument scannen ist auf Android verfügbar. Du kannst eine vorhandene PDF auswählen.',
@@ -47,7 +54,7 @@ class AndroidDocumentScannerRepository implements DocumentScannerRepository {
     final scanner = DocumentScanner(
       options: DocumentScannerOptions(
         documentFormats: const {DocumentFormat.jpeg, DocumentFormat.pdf},
-        pageLimit: 20,
+        pageLimit: pageLimit.clamp(1, PdfLimits.entryPages),
         mode: ScannerMode.full,
         isGalleryImport: false,
       ),
@@ -188,10 +195,18 @@ class LocalDocumentRepository implements DocumentRepository {
   final Future<Directory> Function() directoryProvider;
 
   @override
-  Future<DocumentImportResult> pick({bool multiple = true}) async {
+  Future<DocumentImportResult> pick({
+    bool multiple = true,
+    DocumentImportBudget budget = const DocumentImportBudget(),
+  }) async {
     if (kIsWeb) {
       throw const FormatException(
         'PDF-Dateiabläufe bitte in der Android-App testen.',
+      );
+    }
+    if (budget.exhausted) {
+      throw const FormatException(
+        'Das PDF-Limit ist erreicht. Entferne oder ersetze einen Anhang.',
       );
     }
     final result = await FilePicker.pickFiles(
@@ -208,36 +223,57 @@ class LocalDocumentRepository implements DocumentRepository {
         if (file.path == null) {
           throw const FormatException('Datei nicht lesbar');
         }
-        documents.add(
-          await importFile(file.path!, file.name, DocumentSource.imported),
+        final imported = await importFile(
+          file.path!,
+          file.name,
+          DocumentSource.imported,
+          budget: budget,
         );
+        documents.add(imported);
+        budget = budget.consume(imported.pageCount, imported.sizeBytes);
       } catch (error) {
-        failures.add('${file.name}: $error');
+        final message = error is FormatException
+            ? error.message
+            : 'Die Datei konnte nicht als PDF gelesen werden.';
+        failures.add('${file.name}: $message');
       }
     }
     return DocumentImportResult(documents: documents, failures: failures);
   }
 
   @override
-  Future<DocumentImportResult> scan() async {
-    final path = await scanner.scan();
+  Future<DocumentImportResult> scan({
+    DocumentImportBudget budget = const DocumentImportBudget(),
+  }) async {
+    if (budget.exhausted) {
+      throw const FormatException(
+        'Das PDF-Limit ist erreicht. Entferne oder ersetze einen Anhang.',
+      );
+    }
+    final path = await scanner.scan(
+      pageLimit: budget.pages.clamp(1, PdfLimits.entryPages),
+    );
     if (path == null) return const DocumentImportResult();
     final now = DateTime.now();
     final name = 'Scan_${now.toIso8601String().replaceAll(':', '-')}.pdf';
     return DocumentImportResult(
-      documents: [await importFile(path, name, DocumentSource.scanned)],
+      documents: [
+        await importFile(path, name, DocumentSource.scanned, budget: budget),
+      ],
     );
   }
 
   Future<ReadingDocument> importFile(
     String sourcePath,
     String name,
-    DocumentSource source,
-  ) async {
+    DocumentSource source, {
+    DocumentImportBudget budget = const DocumentImportBudget(),
+  }) async {
     final sourceFile = File(sourcePath);
     if (!name.toLowerCase().endsWith('.pdf') || !await sourceFile.exists()) {
       throw const FormatException('Bitte eine lesbare PDF-Datei auswählen.');
     }
+    budget.validate(1, await sourceFile.length());
     final id = newLocalId('document');
     final directory = Directory(
       p.join((await directoryProvider()).path, 'vehicle_documents'),
@@ -245,15 +281,30 @@ class LocalDocumentRepository implements DocumentRepository {
     await directory.create(recursive: true);
     final target = File(p.join(directory.path, '$id.pdf'));
     try {
-      await sourceFile.copy(target.path);
+      final sink = target.openWrite();
+      var copied = 0;
+      try {
+        await sink.addStream(
+          sourceFile.openRead().map((chunk) {
+            copied += chunk.length;
+            if (copied > budget.fileBytes) {
+              throw const FormatException(
+                'Die PDF überschreitet die erlaubte Dateigröße.',
+              );
+            }
+            return chunk;
+          }),
+        );
+      } finally {
+        await sink.close();
+      }
       final pageCount = await pdf.inspect(target.path);
+      budget.validate(pageCount, await target.length());
       return ReadingDocument(
         id: id,
         fileName: p.basename(name),
         path: target.path,
-        sha256: await const IntegrityService().sha256Bytes(
-          await target.readAsBytes(),
-        ),
+        sha256: await const IntegrityService().sha256Stream(target.openRead()),
         pageCount: pageCount,
         sizeBytes: await target.length(),
         source: source,
